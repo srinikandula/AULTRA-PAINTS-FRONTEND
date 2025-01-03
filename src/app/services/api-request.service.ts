@@ -73,11 +73,11 @@ export class ApiRequestService {
     }
 
     // Search for a product by name
-  searchProductByName(name: string) {
-    return this.http.get(`${this.ApiUrls.mainUrl}${this.ApiUrls.getProductByName}/${name}`).pipe(
-      map((res: any) => res)
-    );
-  }
+    searchProductByName(name: string, page: number = 1, limit: number = 10) {
+        return this.http.get(`${this.ApiUrls.mainUrl}${this.ApiUrls.getProductByName}/${name}?page=${page}&limit=${limit}`).pipe(
+          map((res: any) => res)
+        );
+      }
 
     // Update a product by its ID
     updateProduct(id: string, data: any) {
@@ -125,11 +125,13 @@ export class ApiRequestService {
     }
 
     // Search for brands by name
-  searchBrandsByName(name: string): Observable<any> {
-    return this.http.get(`${this.ApiUrls.mainUrl}/${this.ApiUrls.searchBrandsByName}${name}`).pipe(
-      map((res: any) => res)
-    );
-  }
+    searchBrandsByName(name: string, page: number = 1, limit: number = 10): Observable<any> {
+        return this.http.get(`${this.ApiUrls.mainUrl}/${this.ApiUrls.searchBrandsByName}/${name}?page=${page}&limit=${limit}`).pipe(
+          map((res: any) => res)
+        );
+      }
+      
+      
 
     // Update a brand
     updateBrand(id: string, data: any) {

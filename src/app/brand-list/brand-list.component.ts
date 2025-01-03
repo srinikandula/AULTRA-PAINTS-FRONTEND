@@ -18,6 +18,8 @@ export class BrandListComponent {
   searchQuery: string = '';
   currentBrand: any = { proId: '', brands: '' };
   errorMessage: string = '';
+  isSearching: boolean = false;
+
   // Pagination variables
   currentPage: number = 1;
   totalPages: number = 1;
@@ -63,27 +65,32 @@ export class BrandListComponent {
     );
   }
 
-   // Search brands by name
-   searchBrands(): void {
+  // Search brands based on query
+  searchBrands(): void {
     if (this.searchQuery.trim() === '') {
-      this.loadBrands(); 
+      this.loadBrands();  // Load all brands if the search query is empty
       return;
     }
 
-    this.apiRequestService.searchBrandsByName(this.searchQuery).subscribe({
+    // Start searching for brands
+    this.isSearching = true;
+    this.apiRequestService.searchBrandsByName(this.searchQuery, this.currentPage, this.limit).subscribe({
       next: (response: any) => {
-        if (response && response.length > 0) {
-          this.brands = response;  
+        if (response && response.data && response.data.length > 0) {
+          this.brands = response.data;  // Brands found based on the search query
+          this.totalBrands = response.total;
+          this.totalPages = response.pages;
         } else {
-          this.showError('No brands found matching your search!');
-          this.brands = [];  
+          this.brands = [];  // No brands found
         }
       },
       error: (error) => {
-        this.showError('Error searching for brands!');
+        console.error('Error searching brands:', error);
+        this.brands = [];
       }
     });
   }
+  
 
   // Add brand: Open the modal
   addBrand(brandModal: any): void {

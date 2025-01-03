@@ -51,5 +51,5 @@ export class ApiUrlsService {
     updateBrand = 'brands';
     deleteBrand = 'brands';
     getAllBrandsForSelect = 'brands/getAllBrandsForSelect/'
-    searchBrandsByName = 'brands/search/'
+    searchBrandsByName = 'brands/search'
 }

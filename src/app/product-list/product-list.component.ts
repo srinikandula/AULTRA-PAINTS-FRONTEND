@@ -15,9 +15,10 @@ import Swal from 'sweetalert2';
 export class ProductListComponent implements OnInit {
   products: any[] = [];
   currentProduct: any = { name: '' };
-  searchQuery: string = '';  // Store search query
-  isSearching: boolean = false;  // Flag to toggle searching status
+  searchQuery: string = '';  
+  isSearching: boolean = false;  
 
+  
 
   // Pagination variables
   currentPage: number = 1;
@@ -39,33 +40,37 @@ export class ProductListComponent implements OnInit {
         this.totalProducts = data.pagination.totalProducts; 
       },
       (error) => {
-        this.showError('Error fetching products!');
       }
     );
   }
   
-   // Search products by name
-   searchProducts(): void {
+    // Search products by name
+  searchProducts(): void {
     if (this.searchQuery.trim() === '') {
       this.loadProducts();  
       return;
     }
 
     this.isSearching = true;
-    this.apiService.searchProductByName(this.searchQuery).subscribe(
+    this.apiService.searchProductByName(this.searchQuery, this.currentPage, this.limit).subscribe(
       (data) => {
-        if (data) {
-          this.products = [data];  
+        if (data && data.data && data.data.length > 0) {
+          this.products = data.data;  
+          this.totalPages = data.pages;
+          this.totalProducts = data.total;
         } else {
           this.products = [];
-          this.showError('No products found!');
+          
         }
+        this.isSearching = false;
       },
       (error) => {
-        this.showError('Error fetching products!');
+        this.products = [];
+        this.isSearching = false;
       }
     );
   }
+
 
   // Open modal for adding a new product
   addProduct(content: any): void {
