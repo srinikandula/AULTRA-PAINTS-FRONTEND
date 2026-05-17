@@ -18,11 +18,11 @@ import { ProductDataList } from '@/features/products/product-data-list';
 import { BatchList } from '@/features/batches/batch-list';
 import { CreateBatch } from '@/features/batches/create-batch';
 import { OrderList } from '@/features/orders/order-list';
+import { Transactions } from '@/features/transactions/transactions';
 
 // Real components are wired in Phases 3-6; replace these stubs as we go.
 const Register       = () => <FeatureStub name="Register" />;
 const PrivacyPolicy  = () => <FeatureStub name="Privacy Policy" />;
-const Transactions   = () => <FeatureStub name="Transactions" />;
 const TransactionLedger = () => <FeatureStub name="Transaction Ledger" />;
 const CreditNotes    = () => <FeatureStub name="Credit Notes" />;
 const ProductOffers  = () => <FeatureStub name="Product Offers" />;
