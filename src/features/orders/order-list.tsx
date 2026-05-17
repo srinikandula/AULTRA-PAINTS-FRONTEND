@@ -13,7 +13,7 @@ import { useOrders, useDealers } from './hooks';
 import type { OrderStatus } from '@/types/order';
 
 const STATUS_OPTIONS: OrderStatus[] = [
-  'PENDING', 'APPROVED', 'REJECTED', 'SHIPPED', 'DELIVERED', 'CANCELLED',
+  'PENDING', 'VERIFIED', 'REJECTED', 'DISPATCHED', 'IN-PARCEL',
 ];
 
 const ALL = '__all__';
@@ -21,7 +21,8 @@ const ALL = '__all__';
 export function OrderList() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<OrderStatus | undefined>(undefined);
-  const [dealerId, setDealerId] = useState<string | undefined>(undefined);
+  // Backend filters dealers by code, not by _id.
+  const [dealerCode, setDealerCode] = useState<string | undefined>(undefined);
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
   const limit = 20;
@@ -31,7 +32,7 @@ export function OrderList() {
     page,
     limit,
     status,
-    dealerId,
+    dealerCode,
     fromDate: fromDate || undefined,
     toDate: toDate || undefined,
   });
@@ -62,9 +63,9 @@ export function OrderList() {
             </Select>
 
             <Select
-              value={dealerId ?? ALL}
+              value={dealerCode ?? ALL}
               onValueChange={(v) => {
-                setDealerId(v === ALL ? undefined : v);
+                setDealerCode(v === ALL ? undefined : v);
                 setPage(1);
               }}
             >
@@ -72,7 +73,10 @@ export function OrderList() {
               <SelectContent>
                 <SelectItem value={ALL}>All dealers</SelectItem>
                 {dealers.data?.map((d) => (
-                  <SelectItem key={d._id} value={d._id}>{`${d.name} (${d.mobile})`}</SelectItem>
+                  <SelectItem
+                    key={d._id}
+                    value={d.dealerCode ?? d._id}
+                  >{`${d.name}${d.dealerCode ? ` (${d.dealerCode})` : ''}`}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

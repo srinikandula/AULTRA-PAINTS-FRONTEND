@@ -1,4 +1,10 @@
-export type OrderStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+// Order statuses recognized by the backend's getOrders endpoint.
+export type OrderStatus =
+  | 'PENDING'
+  | 'VERIFIED'
+  | 'REJECTED'
+  | 'DISPATCHED'
+  | 'IN-PARCEL';
 
 export type Order = {
   _id: string;
@@ -15,7 +21,10 @@ export type OrderListParams = {
   page: number;
   limit: number;
   status?: OrderStatus;
-  dealerId?: string;
+  // Backend filters dealers by code (looked up server-side via User.dealerCode).
+  dealerCode?: string;
+  // Kept for source compatibility with the UI; not sent to backend (no
+  // date-range support today).
   fromDate?: string;
   toDate?: string;
 };
