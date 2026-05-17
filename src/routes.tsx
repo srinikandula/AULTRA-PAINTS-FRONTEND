@@ -23,11 +23,11 @@ import { TransactionLedger } from '@/features/transactions/transaction-ledger';
 import { CreditNotes } from '@/features/credit-notes/credit-notes';
 import { ProductOffers } from '@/features/product-offers/product-offers';
 import { RewardSchemes } from '@/features/reward-schemes/reward-schemes';
+import { Payouts } from '@/features/payouts/payouts';
 
 // Real components are wired in Phases 3-6; replace these stubs as we go.
 const Register       = () => <FeatureStub name="Register" />;
 const PrivacyPolicy  = () => <FeatureStub name="Privacy Policy" />;
-const Payouts        = () => <FeatureStub name="Payouts" />;
 
 export function AppRoutes() {
   return (
