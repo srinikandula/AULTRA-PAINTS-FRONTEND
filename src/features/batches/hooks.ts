@@ -84,17 +84,57 @@ export function useBatchesPaginated(params: ListParams = {}) {
   });
 }
 
+// One row in the nested BatchNumbers array. `ProductName` is the product
+// `_id` (the backend field is poorly named - it's a foreign key, not a label).
+// `CouponSeries` is a numeric string representing the start of the series; the
+// server computes the end as `start + Quantity - 1`.
+export type BatchDetail = {
+  CouponSeries: string;
+  ProductName: string;
+  redeemablePoints: number;
+  value: number;
+  Volume: string;
+  Quantity: number;
+};
+
+export type CreateBatchBody = {
+  Branch: string;
+  Brand: string;
+  CreationDate: string;
+  ExpiryDate: string;
+  BatchNumber: string;
+  BatchNumbers: BatchDetail[];
+};
+
+type CreateBatchResponse = {
+  success: unknown[];
+  error: unknown[];
+};
+
 export function useCreateBatch() {
   const qc = useQueryClient();
-  return useMutation<Batch, Error, Partial<Batch>>({
-    // TODO(backend): real endpoint is POST /batchNumbers/add and expects a
-    // nested body `{ Branch, Brand, CreationDate, ExpiryDate, BatchNumber,
-    // BatchNumbers: [{ CouponSeries, ProductName, redeemablePoints, value,
-    // Volume, Quantity }, ...] }` plus coupon-availability validation. The
-    // current simple Partial<Batch> form cannot produce a valid request — the
-    // CreateBatch screen needs a richer form before this mutation will work.
-    mutationFn: (body) => api<Batch>('batchNumbers/add', { method: 'POST', body }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['batches'] }),
+  return useMutation<CreateBatchResponse, Error, CreateBatchBody>({
+    mutationFn: (body) =>
+      api<CreateBatchResponse>('batchNumbers/add', { method: 'POST', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['batches', 'list'] }),
+  });
+}
+
+// Cascading product list for the create-batch row builder. The backend route
+// returns the raw Product docs (`{ _id, brandId, products }`) - the
+// human-readable name lives in the `products` field, not `productName`.
+export type ProductForBrand = {
+  _id: string;
+  brandId: string;
+  products: string;
+};
+
+export function useProductsForBrand(brandId: string | undefined) {
+  return useQuery<ProductForBrand[]>({
+    queryKey: ['products', 'for-brand-select', brandId],
+    queryFn: () =>
+      api<ProductForBrand[]>(`products/getAllProductsForSelect/${brandId}`),
+    enabled: !!brandId,
   });
 }
 
