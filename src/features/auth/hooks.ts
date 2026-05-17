@@ -27,3 +27,9 @@ export function useVerifyOtp() {
     },
   });
 }
+
+export function useRegister() {
+  return useMutation<{ message: string }, Error, { name: string; mobile: string; email?: string }>({
+    mutationFn: (body) => api<{ message: string }>('auth/register', { method: 'POST', body, skipAuth: true }),
+  });
+}

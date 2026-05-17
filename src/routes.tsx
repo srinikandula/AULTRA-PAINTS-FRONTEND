@@ -5,6 +5,7 @@ import { RoleGate } from '@/components/layout/role-gate';
 import { NoAuthRoute } from '@/components/layout/no-auth-route';
 import { FeatureStub } from '@/features/_stub';
 import { Login } from '@/features/auth/login';
+import { Register } from '@/features/auth/register';
 import { Dashboard } from '@/features/dashboard/dashboard';
 import { UserList as Users } from '@/features/users/user-list';
 import { UnverifiedUsers } from '@/features/users/unverified-users';
@@ -26,7 +27,6 @@ import { RewardSchemes } from '@/features/reward-schemes/reward-schemes';
 import { Payouts } from '@/features/payouts/payouts';
 
 // Real components are wired in Phases 3-6; replace these stubs as we go.
-const Register       = () => <FeatureStub name="Register" />;
 const PrivacyPolicy  = () => <FeatureStub name="Privacy Policy" />;
 
 export function AppRoutes() {
