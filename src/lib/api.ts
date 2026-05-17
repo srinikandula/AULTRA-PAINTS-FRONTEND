@@ -1,11 +1,16 @@
 import { env } from '@/env';
 import { useAuthStore } from '@/stores/auth-store';
 
-export type ApiError = {
+export class ApiError extends Error {
   status: number;
   code?: string;
-  message: string;
-};
+  constructor(status: number, message: string, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
 
 type ApiInit = Omit<RequestInit, 'body'> & {
   body?: unknown;        // JSON-serializable; pass undefined for no body
@@ -48,12 +53,11 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
         window.location.href = '/login';
       }
     }
-    const err: ApiError = {
-      status: res.status,
-      code: parsed.code,
-      message: parsed.message ?? `Request failed (${res.status})`,
-    };
-    throw err;
+    throw new ApiError(
+      res.status,
+      parsed.message ?? `Request failed (${res.status})`,
+      parsed.code,
+    );
   }
 
   // 204 No Content → return null
