@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { useCreditNotes, creditNotePdfUrl } from './hooks';
+import { IssueCreditNoteDialog } from './issue-credit-note-dialog';
 import type { CreditNote } from '@/types/credit-note';
 
 const ALL = '__all__';
@@ -22,6 +24,7 @@ export function CreditNotes() {
   const [balanceType, setBalanceType] = useState<CreditNote['balanceType'] | undefined>(undefined);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [issuing, setIssuing] = useState(false);
   const limit = 20;
 
   const { data, isLoading, isError, error } = useCreditNotes({
@@ -37,7 +40,12 @@ export function CreditNotes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Credit notes</h1>
+        <Button onClick={() => setIssuing(true)}>
+          <Plus className="mr-2 h-4 w-4" /> Issue credit note
+        </Button>
       </div>
+
+      <IssueCreditNoteDialog open={issuing} onOpenChange={setIssuing} />
 
       <Card>
         <CardHeader>

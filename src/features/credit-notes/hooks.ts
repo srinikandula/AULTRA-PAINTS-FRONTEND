@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { env } from '@/env';
 import type { Paginated } from '@/types/user';
@@ -53,4 +53,61 @@ export function useCreditNotes(params: Params) {
 // the same gap. URL itself is correct (matches the registered GET route).
 export function creditNotePdfUrl(creditNoteNumber: string) {
   return `${env.apiUrl.replace(/\/$/, '')}/creditNotes/pdf/${creditNoteNumber}`;
+}
+
+export type Dealer = {
+  _id: string;
+  name: string;
+  mobile: string;
+  dealerCode?: string;
+  rewardPoints?: number;
+  cash?: number;
+  legacyCash?: number;
+};
+
+// `GET /users/dealers` returns `{ status: 'success', data: Dealer[] }`.
+type DealersEnvelope = { status?: string; data: Dealer[] };
+
+export function useDealers() {
+  return useQuery<Dealer[]>({
+    queryKey: ['credit-notes', 'dealers'],
+    queryFn: async () => {
+      const env = await api<DealersEnvelope>('users/dealers');
+      return env.data;
+    },
+  });
+}
+
+export type IssueCreditNoteBody = {
+  userId: string;
+  balanceType: CreditNote['balanceType'];
+  amount: number;
+  narration?: string;
+};
+
+type IssueCreditNoteResponse = {
+  creditNote: {
+    creditNoteNumber: string;
+    balanceType: CreditNote['balanceType'];
+    amount: number;
+    narration?: string;
+    status: CreditNote['status'];
+    createdAt: string;
+  };
+  balanceAfter: { rewardPoints: number; cash: number };
+};
+
+export function useIssueCreditNote() {
+  const qc = useQueryClient();
+  return useMutation<IssueCreditNoteResponse, Error, IssueCreditNoteBody>({
+    mutationFn: (body) =>
+      api<IssueCreditNoteResponse>('creditNotes/issue', { method: 'POST', body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['credit-notes', 'list'] });
+      // The issued note also writes a ledger row + debits the dealer balance,
+      // so refresh those too.
+      qc.invalidateQueries({ queryKey: ['ledger', 'list'] });
+      qc.invalidateQueries({ queryKey: ['credit-notes', 'dealers'] });
+    },
+  });
 }
