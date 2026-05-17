@@ -168,13 +168,50 @@ export function useProductCatalog(params: ListParams) {
   });
 }
 
-export function useProductDataList(params: ListParams) {
-  return useQuery<Paginated<Product>>({
-    queryKey: ['products', 'data-list', params],
-    // TODO(backend): endpoint not registered; produces 404. The Angular client
-    // also failed to find a matching route. Closest live endpoints are
-    // `/products/unified-products` and `/products/focus-products`; neither
-    // matches the UI's expected paginated shape.
-    queryFn: () => api<Paginated<Product>>('products/data', { method: 'POST', body: params }),
+// Batch statistics list — used by the /product-data-list route. The Angular
+// screen calls this "Batch Statistics", not "Product Data List", but we keep
+// the React route name for URL parity with the Angular app.
+
+export type BatchStatRow = {
+  name: string; // formatted "Product-Brand-Branch-BatchNumber"
+  branch: string;
+  createdAt: string;
+  issuedPoints: number;
+  issuedCash: number;
+  redeemedPoints: number;
+  redeemedCash: number;
+};
+
+type BatchStatsEnvelope = {
+  success: boolean;
+  data: BatchStatRow[];
+  branches: string[]; // sorted list of all distinct branches (for the filter UI)
+  pagination: { total: number; page: number; totalPages: number; limit: number };
+};
+
+export type BatchStatsResult = {
+  data: BatchStatRow[];
+  branches: string[];
+  pagination: { currentPage: number; totalPages: number; totalRecords: number };
+};
+
+export function useBatchStatisticsList(params: { page: number; limit: number; branches: string[] }) {
+  return useQuery<BatchStatsResult>({
+    queryKey: ['products', 'batch-statistics-list', params],
+    queryFn: async () => {
+      const env = await api<BatchStatsEnvelope>('chart/batch-statistics-list', {
+        method: 'POST',
+        body: { page: params.page, limit: params.limit, branches: params.branches },
+      });
+      return {
+        data: env.data,
+        branches: env.branches,
+        pagination: {
+          currentPage: env.pagination.page,
+          totalPages: env.pagination.totalPages,
+          totalRecords: env.pagination.total,
+        },
+      };
+    },
   });
 }
