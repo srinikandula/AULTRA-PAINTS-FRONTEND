@@ -88,49 +88,12 @@ export function useProducts(params: ListParams) {
   });
 }
 
-export function useProduct(id: string | undefined) {
-  return useQuery<Product>({
-    queryKey: ['products', 'detail', id],
-    // TODO(backend): no `GET /products/:productId` single-product endpoint;
-    // `GET /products/:brandId` returns the products for a brand. The edit flow
-    // currently has no working detail call — leaving the hook in place so the
-    // form skeleton renders, but the request will 404 / return an unrelated
-    // shape until a real endpoint is registered.
-    queryFn: () => api<Product>(`products/${id}`),
-    enabled: !!id,
-  });
-}
-
-export function useCreateProduct() {
-  const qc = useQueryClient();
-  return useMutation<Product, Error, Partial<Product> & { brand?: string | { _id: string } }>({
-    mutationFn: (body) => {
-      const brandId = typeof body.brand === 'string' ? body.brand : body.brand?._id;
-      return api<Product>('products', {
-        method: 'POST',
-        body: { brandId, products: body.productName },
-      });
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['products', 'list'] }),
-  });
-}
-
-export function useUpdateProduct() {
-  const qc = useQueryClient();
-  return useMutation<Product, Error, { _id: string } & Partial<Product> & { brand?: string | { _id: string } }>({
-    mutationFn: ({ _id, ...body }) => {
-      const brandId = typeof body.brand === 'string' ? body.brand : body.brand?._id;
-      return api<Product>(`products/${_id}`, {
-        method: 'PUT',
-        body: { brandId, products: body.productName },
-      });
-    },
-    onSuccess: (_data, { _id }) => {
-      qc.invalidateQueries({ queryKey: ['products', 'list'] });
-      qc.invalidateQueries({ queryKey: ['products', 'detail', _id] });
-    },
-  });
-}
+// The /products mongoose collection (a flat "name string per brand" surface)
+// does not have a single-item-by-id endpoint, and the Catalog rewrite now
+// owns the rich Create / Edit flow via /productCatlog. We dropped the dead
+// useProduct / useCreateProduct / useUpdateProduct hooks (which targeted
+// /products and never worked end-to-end). useProducts + useDeleteProduct
+// stay because product-list.tsx still renders the brand-products table.
 
 export function useDeleteProduct() {
   const qc = useQueryClient();
