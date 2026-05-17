@@ -181,6 +181,15 @@ type CatalogMutationBody = {
   productImage?: string;               // base64 data URI; create-required
 };
 
+export function useCreateCatalog() {
+  const qc = useQueryClient();
+  return useMutation<CatalogItem, Error, CatalogMutationBody>({
+    mutationFn: (body) =>
+      api<CatalogItem>('productCatlog/create', { method: 'POST', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products', 'catalog'] }),
+  });
+}
+
 export function useUpdateCatalog() {
   const qc = useQueryClient();
   return useMutation<CatalogItem, Error, { _id: string } & CatalogMutationBody>({
