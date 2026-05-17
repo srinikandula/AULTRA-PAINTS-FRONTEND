@@ -32,15 +32,28 @@ type CatalogEnvelope<T> = {
   currentPage: number;
 };
 
-// Catalog (productCatlog) items as the backend stores them.
-type RawCatalogItem = {
+// Rich catalog item shape — exposed for the catalog card grid and the
+// Create / Edit Product screens. Mirrors the backend `productOfferModel`
+// document plus the per-request `productPrice` / `productPrices` fields
+// the `searchProductCatlog` controller appends after Focus8 + dealer
+// pricing resolution.
+export type CatalogItem = {
   _id: string;
-  productOfferDescription?: string;
-  productOfferStatus?: string;
+  productOfferDescription: string;
+  productOfferStatus: 'Active' | 'Inactive';
   productOfferImageUrl?: string;
   productCategory?: { _id: string; name: string } | string | null;
   productPrice?: number;
   productPrices?: Array<{ volume?: string; price: number }>;
+  // Stored shape on the document — `{ volume, refId, price }` rows.
+  price?: Array<{ volume: string; refId: string; price: number }>;
+  focusProductId?: string | number;
+  focusUnitId?: number;
+  focusProductMapping?: Array<{
+    volume: string;
+    focusProductId: number;
+    focusUnitId?: number;
+  }>;
   brandId?: string;
   BrandNameStr?: string;
 };
@@ -51,23 +64,6 @@ function toProductFromBrandRow(raw: ProductsListEnvelope['products'][number]): P
     productCode: '',
     productName: raw.products,
     brand: raw.BrandNameStr ?? raw.brandId,
-  };
-}
-
-function toProductFromCatalog(raw: RawCatalogItem): Product {
-  const category =
-    raw.productCategory && typeof raw.productCategory === 'object'
-      ? { _id: raw.productCategory._id, categoryName: raw.productCategory.name }
-      : (raw.productCategory ?? undefined);
-  return {
-    _id: raw._id,
-    productCode: '',
-    productName: raw.productOfferDescription ?? '',
-    productImage: raw.productOfferImageUrl,
-    brand: raw.BrandNameStr ?? raw.brandId,
-    category,
-    price: raw.productPrice,
-    status: raw.productOfferStatus === 'Active' ? 'active' : 'inactive',
   };
 }
 
@@ -145,10 +141,10 @@ export function useDeleteProduct() {
 }
 
 export function useProductCatalog(params: ListParams) {
-  return useQuery<Paginated<Product>>({
+  return useQuery<Paginated<CatalogItem>>({
     queryKey: ['products', 'catalog', params],
     queryFn: async () => {
-      const env = await api<CatalogEnvelope<RawCatalogItem>>('productCatlog/search', {
+      const env = await api<CatalogEnvelope<CatalogItem>>('productCatlog/search', {
         method: 'POST',
         body: {
           page: params.page,
@@ -157,13 +153,70 @@ export function useProductCatalog(params: ListParams) {
         },
       });
       return {
-        data: env.data.map(toProductFromCatalog),
+        data: env.data,
         pagination: {
           currentPage: env.currentPage,
           totalPages: env.pages,
           totalRecords: env.total,
         },
       };
+    },
+  });
+}
+
+// Catalog create / update mutations target the `/productCatlog/create` and
+// `/productCatlog/update/:id` endpoints. The backend's price field is a
+// JSON-stringified `{ [volume]: Array<{ [refId]: price }> }` object — v1
+// hard-codes refId="All" for every entry; geo-pricing (state/zone/district
+// places) is a v2 feature. `productImage` is a base64 data URI; on update
+// it's only sent when the user picks a new file.
+type CatalogMutationBody = {
+  productDescription: string;
+  productStatus: 'Active' | 'Inactive';
+  productCategory: string | null;
+  focusProductId: string;
+  focusUnitId: number;
+  focusProductMapping: string | null; // JSON-stringified array, or null
+  price: string;                       // JSON-stringified object
+  productImage?: string;               // base64 data URI; create-required
+};
+
+export function useUpdateCatalog() {
+  const qc = useQueryClient();
+  return useMutation<CatalogItem, Error, { _id: string } & CatalogMutationBody>({
+    mutationFn: ({ _id, ...body }) =>
+      api<CatalogItem>(`productCatlog/update/${_id}`, { method: 'PUT', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products', 'catalog'] }),
+  });
+}
+
+export function useDeleteCatalog() {
+  const qc = useQueryClient();
+  return useMutation<{ message: string }, Error, { _id: string }>({
+    mutationFn: ({ _id }) =>
+      api<{ message: string }>(`productCatlog/delete/${_id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products', 'catalog'] }),
+  });
+}
+
+// Focus8 product master, surfaced by the backend at GET /products/focus-products.
+// Each row preserves Focus' raw column names — `iMasterId` is the numeric
+// product id, `sName` is the display name. We keep the quirky shape rather
+// than renaming, so the field is recognizable when debugging against Focus8.
+export type FocusProduct = {
+  iMasterId: number | string;
+  sName: string;
+  sCode?: string;
+};
+
+export function useFocusProducts() {
+  return useQuery<FocusProduct[]>({
+    queryKey: ['products', 'focus-products'],
+    queryFn: async () => {
+      const env = await api<{ success: boolean; data: FocusProduct[] }>(
+        'products/focus-products',
+      );
+      return env.data ?? [];
     },
   });
 }
