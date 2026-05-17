@@ -1,12 +1,22 @@
+import { BrowserRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+import { AppRoutes } from './routes';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
+    mutations: { retry: 0 },
+  },
+});
+
 export default function App() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold text-primary">Aultra Paints</h1>
-        <p className="text-sm text-muted-foreground">
-          Tailwind + shadcn theme is wired up.
-        </p>
-      </div>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AppRoutes />
+        <Toaster richColors position="top-right" />
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
