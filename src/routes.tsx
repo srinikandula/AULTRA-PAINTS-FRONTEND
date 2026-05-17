@@ -8,6 +8,7 @@ import { Login } from '@/features/auth/login';
 import { Dashboard } from '@/features/dashboard/dashboard';
 import { UserList as Users } from '@/features/users/user-list';
 import { UnverifiedUsers } from '@/features/users/unverified-users';
+import { BrandList } from '@/features/brands/brand-list';
 
 // Real components are wired in Phases 3-6; replace these stubs as we go.
 const Register       = () => <FeatureStub name="Register" />;
@@ -20,7 +21,6 @@ const EditProduct    = () => <FeatureStub name="Edit Product" />;
 const ProductCategoryList = () => <FeatureStub name="Product Category List" />;
 const ProductCatalog = () => <FeatureStub name="Product Catalog" />;
 const ProductDataList = () => <FeatureStub name="Product Data List" />;
-const BrandList      = () => <FeatureStub name="Brand List" />;
 const OrderList      = () => <FeatureStub name="Order List" />;
 const Transactions   = () => <FeatureStub name="Transactions" />;
 const TransactionLedger = () => <FeatureStub name="Transaction Ledger" />;
