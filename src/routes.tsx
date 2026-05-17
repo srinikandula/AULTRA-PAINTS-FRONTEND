@@ -54,7 +54,7 @@ export function AppRoutes() {
             <Route path="/create-product" element={<CreateProduct />} />
             <Route path="/edit-product/:id" element={<EditProduct />} />
             <Route path="/product-category-list" element={<ProductCategoryList />} />
-            <Route path="/product-catlog" element={<ProductCatalog />} />
+            <Route path="/product-catalog" element={<ProductCatalog />} />
             <Route path="/product-data-list" element={<ProductDataList />} />
             <Route path="/brand-list" element={<BrandList />} />
             <Route path="/transactions" element={<Transactions />} />
