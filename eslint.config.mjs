@@ -5,20 +5,14 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default [
   // Note: `files: ['src/**/*.{ts,tsx}']` below already scopes linting to src/.
-  // We still need to ignore root-level configs (tailwind, postcss, vite, server)
+  // We still need to ignore root-level configs (tailwind, postcss, vite)
   // because ESLint 9 flat-config parses all matched files before applying the
   // `files` filter — so untyped root TS files would otherwise trigger parser
-  // errors. `.angular/**` is excluded for the same reason during the migration window.
+  // errors.
   {
     ignores: [
       'dist',
       'node_modules',
-      '.angular/**',
-      'src/app/**',
-      'src/main.ts',
-      'src/main.server.ts',
-      'src/server.ts',
-      'server.ts',
       'tailwind.config.ts',
       'postcss.config.mjs',
       'vite.config.ts',

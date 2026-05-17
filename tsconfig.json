@@ -18,6 +18,5 @@
     "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "vite.config.ts"],
-  "exclude": ["src/app", "src/main.ts", "src/main.server.ts", "server.ts"]
+  "include": ["src", "vite.config.ts"]
 }
