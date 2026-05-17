@@ -9,13 +9,13 @@ import { Dashboard } from '@/features/dashboard/dashboard';
 import { UserList as Users } from '@/features/users/user-list';
 import { UnverifiedUsers } from '@/features/users/unverified-users';
 import { BrandList } from '@/features/brands/brand-list';
+import { ProductList } from '@/features/products/product-list';
 
 // Real components are wired in Phases 3-6; replace these stubs as we go.
 const Register       = () => <FeatureStub name="Register" />;
 const PrivacyPolicy  = () => <FeatureStub name="Privacy Policy" />;
 const BatchList      = () => <FeatureStub name="Batch List" />;
 const CreateBatch    = () => <FeatureStub name="Create Batch" />;
-const ProductList    = () => <FeatureStub name="Product List" />;
 const CreateProduct  = () => <FeatureStub name="Create Product" />;
 const EditProduct    = () => <FeatureStub name="Edit Product" />;
 const ProductCategoryList = () => <FeatureStub name="Product Category List" />;
