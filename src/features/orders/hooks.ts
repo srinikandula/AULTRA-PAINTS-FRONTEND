@@ -1,7 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Paginated } from '@/types/user';
-import type { Order, OrderListParams, OrderStatus } from '@/types/order';
+import type {
+  FocusSyncStatus,
+  Order,
+  OrderItem,
+  OrderListParams,
+  OrderStatus,
+} from '@/types/order';
 
 // Backend list response: { success, orders, total, pages, currentPage } where
 // each order has `orderId`, `finalPrice`, `dealerId` (populated user doc) and
@@ -12,6 +18,7 @@ type RawOrderRow = {
   status: OrderStatus;
   finalPrice?: number;
   totalPrice?: number;
+  gstPrice?: number;
   items?: Array<{
     _id?: string;
     productOfferDescription?: string;
@@ -19,19 +26,27 @@ type RawOrderRow = {
     quantity?: number;
     volume?: string;
   }>;
-  dealerId?: {
-    _id: string;
-    name?: string;
-    mobile?: string;
-    dealerCode?: string;
-  } | string;
-  createdBy?: {
-    _id: string;
-    name?: string;
-    mobile?: string;
-    dealerCode?: string;
-    accountType?: string;
-  } | string;
+  dealerId?:
+    | {
+        _id: string;
+        name?: string;
+        mobile?: string;
+        dealerCode?: string;
+      }
+    | string;
+  createdBy?:
+    | {
+        _id: string;
+        name?: string;
+        mobile?: string;
+        dealerCode?: string;
+        accountType?: string;
+      }
+    | string;
+  narration?: string;
+  focusSyncStatus?: FocusSyncStatus;
+  focusOrderId?: string | number;
+  focusDCInvoiceId?: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -57,21 +72,71 @@ function pickDealer(row: RawOrderRow): Order['dealer'] {
   };
 }
 
+function pickCreatedBy(row: RawOrderRow): Order['createdBy'] {
+  const c = typeof row.createdBy === 'object' && row.createdBy ? row.createdBy : undefined;
+  if (!c) return undefined;
+  return {
+    _id: c._id,
+    name: c.name ?? '',
+    mobile: c.mobile,
+    accountType: c.accountType,
+    dealerCode: c.dealerCode,
+  };
+}
+
+function toItem(it: NonNullable<RawOrderRow['items']>[number]): OrderItem {
+  const qty = it.quantity ?? 0;
+  const price = it.productPrice ?? 0;
+  return {
+    product: {
+      _id: it._id ?? '',
+      productName: it.productOfferDescription ?? '',
+      productOfferDescription: it.productOfferDescription,
+    },
+    productName: it.productOfferDescription,
+    productOfferDescription: it.productOfferDescription,
+    volume: it.volume,
+    quantity: qty,
+    price,
+    productPrice: price,
+    subTotal: qty * price,
+  };
+}
+
+function normalizeDealerId(row: RawOrderRow): Order['dealerId'] {
+  if (!row.dealerId) return undefined;
+  if (typeof row.dealerId === 'string') return row.dealerId;
+  return {
+    _id: row.dealerId._id,
+    name: row.dealerId.name ?? '',
+    dealerCode: row.dealerId.dealerCode,
+    mobile: row.dealerId.mobile,
+  };
+}
+
 function toOrder(row: RawOrderRow): Order {
   return {
     _id: row._id,
+    orderId: row.orderId,
+    // Back-compat: existing readers use `orderNumber`.
     orderNumber: row.orderId,
+    dealerId: normalizeDealerId(row),
+    createdBy: pickCreatedBy(row),
     dealer: pickDealer(row),
-    items: (row.items ?? []).map((it) => ({
-      product: {
-        _id: it._id ?? '',
-        productName: it.productOfferDescription ?? '',
-      },
-      quantity: it.quantity ?? 0,
-      price: it.productPrice ?? 0,
-    })),
+    items: (row.items ?? []).map(toItem),
+    totalPrice: row.totalPrice,
+    gstPrice: row.gstPrice,
+    finalPrice: row.finalPrice,
+    // Aliases for the detail panel.
+    subTotal: row.totalPrice,
+    gst: row.gstPrice,
     totalAmount: row.finalPrice ?? row.totalPrice ?? 0,
     status: row.status,
+    narration: row.narration,
+    focusSyncStatus: row.focusSyncStatus,
+    focusOrderId: row.focusOrderId,
+    focusDCInvoiceId: row.focusDCInvoiceId,
+    dcInvoiceIds: row.focusDCInvoiceId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -81,10 +146,9 @@ export function useOrders(params: OrderListParams) {
   return useQuery<Paginated<Order>>({
     queryKey: ['orders', 'list', params],
     queryFn: async () => {
-      // Backend only filters by page, limit, status, dealerCode — no date
-      // range. Date filters are silently ignored server-side; we still pass
-      // page/limit/status. The caller-supplied `dealerCode` (sourced from the
-      // dealer dropdown) maps directly to backend's body field.
+      // Backend filters by page/limit/status/dealerCode. `salesExecutiveMobile`
+      // is included in the body for forward-compat but is currently ignored
+      // server-side (see TODO on OrderListParams).
       const env = await api<OrdersListEnvelope>('order/orders', {
         method: 'POST',
         body: {
@@ -92,6 +156,7 @@ export function useOrders(params: OrderListParams) {
           limit: params.limit,
           status: params.status,
           dealerCode: params.dealerCode,
+          salesExecutiveMobile: params.salesExecutiveMobile,
         },
       });
       return {
@@ -106,6 +171,50 @@ export function useOrders(params: OrderListParams) {
   });
 }
 
+// Order details envelope returned by GET /order/details/:orderId.
+type OrderDetailsEnvelope = {
+  success: boolean;
+  order: RawOrderRow & {
+    focusSyncResponse?: unknown;
+    focusData?: unknown;
+  };
+};
+
+export function useOrderDetails(orderId: string | undefined) {
+  return useQuery<Order>({
+    queryKey: ['orders', 'detail', orderId],
+    queryFn: async () => {
+      // Backend wraps the result in `{ success, order }`. Unwrap and pass
+      // through the same row -> Order adapter the list uses so the detail
+      // panel reads from a single shape.
+      const env = await api<OrderDetailsEnvelope>(`order/details/${orderId}`);
+      return toOrder(env.order);
+    },
+    enabled: !!orderId,
+  });
+}
+
+export function useRetryFocusSync() {
+  const qc = useQueryClient();
+  return useMutation<
+    { success: boolean; message?: string },
+    Error,
+    { orderId: string }
+  >({
+    mutationFn: ({ orderId }) =>
+      api<{ success: boolean; message?: string }>('order/retryFocusSync', {
+        method: 'POST',
+        body: { orderId },
+      }),
+    onSuccess: (_data, { orderId }) => {
+      qc.invalidateQueries({ queryKey: ['orders', 'detail', orderId] });
+      qc.invalidateQueries({ queryKey: ['orders', 'list'] });
+    },
+  });
+}
+
+// TODO: replace the dealer Select with a Combobox typeahead — the live list
+//   is ~3500 dealers. Same future-work as the Credit Notes Issue dialog.
 type Dealer = { _id: string; name: string; dealerCode?: string };
 
 export function useDealers() {
@@ -114,6 +223,20 @@ export function useDealers() {
     queryFn: async () => {
       const env = await api<{ success: boolean; dealers: Dealer[] }>('order/dealers');
       return env.dealers;
+    },
+  });
+}
+
+export type SalesExecutive = { id: string; name: string; mobile: string };
+
+export function useSalesExecutives() {
+  return useQuery<SalesExecutive[]>({
+    queryKey: ['orders', 'sales-executives'],
+    queryFn: async () => {
+      const env = await api<{ status: string; data: SalesExecutive[] }>(
+        'users/sales-executives',
+      );
+      return env.data ?? [];
     },
   });
 }
