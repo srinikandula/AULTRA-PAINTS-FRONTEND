@@ -73,7 +73,7 @@ export function UserList() {
                           variant="outline"
                           size="sm"
                           onClick={() => toggleStatus.mutate(
-                            { _id: u._id, status: u.status === 'active' ? 'inactive' : 'active' },
+                            { _id: u._id },
                             {
                               onSuccess: () => toast.success(`User ${u.mobile} updated`),
                               onError: (e) => toast.error(e.message),
