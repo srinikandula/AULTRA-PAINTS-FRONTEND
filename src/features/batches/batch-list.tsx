@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -10,22 +15,49 @@ import {
 import { useBatches, useDeleteBatch } from './hooks';
 import type { Batch } from '@/types/batch';
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+
 export function BatchList() {
-  const { data, isLoading, isError, error } = useBatches();
+  const [searchKey, setSearchKey] = useState('');
+  const [limit, setLimit] = useState<number>(20);
+  const { data, isLoading, isError, error } = useBatches({ page: 1, limit, searchKey });
   const remove = useDeleteBatch();
 
   const productName = (p: Batch['product']) =>
-    typeof p === 'string' ? p : p?.productName ?? '—';
+    typeof p === 'string' ? p : p?.productName ?? '-';
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Batches</h1>
-        <Button asChild><Link to="/create-batch"><Plus className="mr-2 h-4 w-4" /> New batch</Link></Button>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Search by branch or batch #"
+            value={searchKey}
+            onChange={(e) => setSearchKey(e.target.value)}
+            className="w-64"
+          />
+          <Button asChild>
+            <Link to="/create-batch"><Plus className="mr-2 h-4 w-4" /> New batch</Link>
+          </Button>
+        </div>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>All batches</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>All batches</CardTitle>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Rows per page</span>
+            <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
+              <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
         <CardContent>
           {isError && <p className="text-sm text-destructive">Couldn't load: {error.message}</p>}
           {isLoading ? (
@@ -51,11 +83,11 @@ export function BatchList() {
                   <TableRow key={b._id}>
                     <TableCell>{b.batchNumber}</TableCell>
                     <TableCell>{productName(b.product)}</TableCell>
-                    <TableCell>{b.manufacturedDate ?? '—'}</TableCell>
-                    <TableCell>{b.expiryDate ?? '—'}</TableCell>
+                    <TableCell>{b.manufacturedDate ?? '-'}</TableCell>
+                    <TableCell>{b.expiryDate ?? '-'}</TableCell>
                     <TableCell>{b.quantity ?? 0}</TableCell>
-                    <TableCell>{`${b.couponSeriesStart ?? '—'}–${b.couponSeriesEnd ?? '—'}`}</TableCell>
-                    <TableCell>{b.status ?? '—'}</TableCell>
+                    <TableCell>{`${b.couponSeriesStart ?? '-'}-${b.couponSeriesEnd ?? '-'}`}</TableCell>
+                    <TableCell>{b.status ?? '-'}</TableCell>
                     <TableCell className="space-x-2 text-right">
                       <Button
                         size="sm"
