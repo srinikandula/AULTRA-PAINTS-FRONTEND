@@ -40,7 +40,14 @@ function buildHeaders(init: ApiInit): HeadersInit {
 }
 
 export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
-  const url = env.apiUrl.replace(/\/$/, '') + '/' + path.replace(/^\//, '');
+  // If `path` is already absolute (caller passed a full URL, e.g. a presigned
+  // upload URL), use it directly. Otherwise build a URL from apiUrl + path.
+  const url = path.startsWith('http://') || path.startsWith('https://')
+    ? path
+    : new URL(
+        path.replace(/^\//, ''),
+        env.apiUrl.endsWith('/') ? env.apiUrl : env.apiUrl + '/',
+      ).toString();
   const res = await fetch(url, {
     ...init,
     headers: buildHeaders(init),
