@@ -19,11 +19,11 @@ import { BatchList } from '@/features/batches/batch-list';
 import { CreateBatch } from '@/features/batches/create-batch';
 import { OrderList } from '@/features/orders/order-list';
 import { Transactions } from '@/features/transactions/transactions';
+import { TransactionLedger } from '@/features/transactions/transaction-ledger';
 
 // Real components are wired in Phases 3-6; replace these stubs as we go.
 const Register       = () => <FeatureStub name="Register" />;
 const PrivacyPolicy  = () => <FeatureStub name="Privacy Policy" />;
-const TransactionLedger = () => <FeatureStub name="Transaction Ledger" />;
 const CreditNotes    = () => <FeatureStub name="Credit Notes" />;
 const ProductOffers  = () => <FeatureStub name="Product Offers" />;
 const RewardSchemes  = () => <FeatureStub name="Reward Schemes" />;
