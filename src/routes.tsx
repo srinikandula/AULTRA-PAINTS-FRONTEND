@@ -5,11 +5,11 @@ import { RoleGate } from '@/components/layout/role-gate';
 import { NoAuthRoute } from '@/components/layout/no-auth-route';
 import { FeatureStub } from '@/features/_stub';
 import { Login } from '@/features/auth/login';
+import { Dashboard } from '@/features/dashboard/dashboard';
 
 // Real components are wired in Phases 3-6; replace these stubs as we go.
 const Register       = () => <FeatureStub name="Register" />;
 const PrivacyPolicy  = () => <FeatureStub name="Privacy Policy" />;
-const Dashboard      = () => <FeatureStub name="Dashboard" />;
 const Users          = () => <FeatureStub name="User List" />;
 const UnverifiedUsers = () => <FeatureStub name="Unverified Users" />;
 const BatchList      = () => <FeatureStub name="Batch List" />;
