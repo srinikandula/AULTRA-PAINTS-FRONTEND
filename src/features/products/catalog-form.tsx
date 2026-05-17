@@ -193,11 +193,14 @@ export function CatalogForm({ initial }: CatalogFormProps) {
       <CardContent>
         <Form {...form}>
           <form className="space-y-4" onSubmit={onSubmit}>
-            <FormItem>
-              <FormLabel>Image{isEdit ? '' : ' *'}</FormLabel>
-              <FormControl>
-                <Input type="file" accept="image/*" onChange={onFileChange} />
-              </FormControl>
+            {/* Image is held in local state (not RHF-managed) — render plain
+                elements rather than FormItem/FormLabel/FormControl so we don't
+                need a FormField context wrapper (which would throw at render). */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none">
+                Image{isEdit ? '' : ' *'}
+              </label>
+              <Input type="file" accept="image/*" onChange={onFileChange} />
               {imageDataUri && (
                 <img
                   src={imageDataUri}
@@ -205,7 +208,7 @@ export function CatalogForm({ initial }: CatalogFormProps) {
                   className="mt-2 h-32 w-full max-w-xs rounded-md border object-cover"
                 />
               )}
-            </FormItem>
+            </div>
 
             <FormField
               control={form.control}
