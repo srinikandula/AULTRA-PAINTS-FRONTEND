@@ -133,6 +133,7 @@ checkoutUrl = 'order/create';
 getAllOrders = 'order/orders';
 getOrderDealersUrl = 'order/dealers';
 retryFocusSync = 'order/retryFocusSync';
+updateOrderStatusManual = 'order/updateOrderStatusManual';
 
 // Credit Notes
 issueCreditNote      = 'creditNotes/issue';

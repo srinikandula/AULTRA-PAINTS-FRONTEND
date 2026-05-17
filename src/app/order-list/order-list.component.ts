@@ -20,6 +20,12 @@ interface SalesExecutiveOption {
   mobile: string;
 }
 
+interface BranchOption {
+  iMasterId: number;
+  sName: string;
+  sCode: string;
+}
+
 @Component({
   selector: 'app-order-list',
   standalone: true,
@@ -48,18 +54,30 @@ export class OrderListComponent extends Unsubscribable implements OnInit {
   salesExecutivesError = '';
   showSalesExecutiveFilter = false;
 
+  branchFilter = 0;
+  branchInput = '';
+  branches: BranchOption[] = [];
+  branchesError = '';
+
   isRetrying: { [key: string]: boolean } = {};
   retryMessage: { [key: string]: string } = {};
 
-  readonly statusOptions = ['PENDING', 'VERIFIED', 'REJECTED', 'DISPATCHED', 'IN-PARCEL'];
+  editModal = { orderId: '', status: '', remarks: '' };
+  isSubmittingEdit = false;
+  editModalError = '';
+  currentUser: any;
+
+  readonly statusOptions = ['PENDING', 'VERIFIED', 'REJECTED', 'DISPATCHED', 'PARTIALLY_DISPATCHED'];
 
   constructor(private apiRequestService: ApiRequestService, private authService: AuthService) {
     super();
   }
 
   ngOnInit(): void {
+    this.currentUser = this.authService.currentUserValue;
     this.loadDealers();
-    const user = this.authService.currentUserValue;
+    this.loadBranches();
+    const user = this.currentUser;
     const accountType = user?.accountType;
     if (accountType === 'SuperUser' || accountType === 'Admin') {
       this.loadSalesExecutives();
@@ -75,6 +93,17 @@ export class OrderListComponent extends Unsubscribable implements OnInit {
       .subscribe({
         next: (dealers) => { this.dealers = dealers; },
         error: () => { this.dealersError = 'Could not load dealer list'; },
+      });
+  }
+
+  loadBranches(): void {
+    this.apiRequestService.getFocusBranches()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          this.branches = response?.warehouses || response?.branches || [];
+        },
+        error: () => { this.branchesError = 'Could not load branch list'; },
       });
   }
 
@@ -115,6 +144,7 @@ export class OrderListComponent extends Unsubscribable implements OnInit {
       status: this.statusFilter || undefined,
       dealerCode: this.dealerCodeFilter || undefined,
       salesExecutiveMobile: this.salesExecutiveFilter || undefined,
+      branchId: this.branchFilter || undefined,
     };
     this.apiRequestService.getAllOrders(this.currentPage, this.limit, filters)
       .pipe(takeUntil(this.destroy$))
@@ -138,7 +168,7 @@ export class OrderListComponent extends Unsubscribable implements OnInit {
       case 'PENDING':    return 'bg-warning text-dark';
       case 'REJECTED':   return 'bg-danger';
       case 'DISPATCHED': return 'bg-success';
-      case 'IN-PARCEL':  return 'bg-info text-dark';
+      case 'PARTIALLY_DISPATCHED':  return 'bg-info text-dark';
       default:           return 'bg-secondary';
     }
   }
@@ -199,6 +229,23 @@ export class OrderListComponent extends Unsubscribable implements OnInit {
 
   dealerFormatter = (d: DealerOption | string): string =>
     typeof d === 'string' ? d : `${d.dealerCode} — ${d.name}`;
+
+  branchSearch = (text$: Observable<string>) =>
+    text$.pipe(
+      debounceTime(150),
+      distinctUntilChanged(),
+      map((term) => {
+        const t = (term || '').trim().toLowerCase();
+        return t ? this.branches.filter(b =>
+          b.sName.toLowerCase().includes(t) ||
+          b.sCode.toLowerCase().includes(t)
+        ).slice(0, 10)
+        : this.branches.slice(0, 10);
+      })
+    );
+
+  branchFormatter = (b: BranchOption | string): string =>
+    typeof b === 'string' ? b : `${b.sCode} — ${b.sName}`;
 
   onDealerSelect(event: any): void {
     const d = event.item as DealerOption;
@@ -268,20 +315,46 @@ export class OrderListComponent extends Unsubscribable implements OnInit {
     }
   }
 
+  onBranchSelect(event: any): void {
+    const b = event.item as BranchOption;
+    this.branchFilter = b.iMasterId;
+    this.branchInput = this.branchFormatter(b);
+    this.currentPage = 1;
+    this.expandedOrderId = null;
+    this.loadOrders();
+  }
+
+  onBranchInputChange(value: string): void {
+    const matchesSelection =
+      !!this.branchFilter &&
+      value === this.branches
+        .filter(b => b.iMasterId === this.branchFilter)
+        .map(this.branchFormatter)[0];
+
+    if (!matchesSelection && this.branchFilter) {
+      this.branchFilter = 0;
+      this.currentPage = 1;
+      this.expandedOrderId = null;
+      this.loadOrders();
+    }
+  }
+
   clearFilters(): void {
-    if (!this.statusFilter && !this.dealerCodeFilter && !this.salesExecutiveFilter) return;
+    if (!this.statusFilter && !this.dealerCodeFilter && !this.salesExecutiveFilter && !this.branchFilter) return;
     this.statusFilter = '';
     this.dealerCodeFilter = '';
     this.dealerInput = '';
     this.salesExecutiveFilter = '';
     this.salesExecutiveInput = '';
+    this.branchFilter = 0;
+    this.branchInput = '';
     this.currentPage = 1;
     this.expandedOrderId = null;
     this.loadOrders();
   }
 
   hasActiveFilters(): boolean {
-    return !!this.statusFilter || !!this.dealerCodeFilter || !!this.salesExecutiveFilter;
+    return !!this.statusFilter || !!this.dealerCodeFilter || !!this.salesExecutiveFilter || !!this.branchFilter;
   }
 
   handlePageChange(page: number): void {
@@ -294,5 +367,49 @@ export class OrderListComponent extends Unsubscribable implements OnInit {
     this.currentPage = 1;
     this.expandedOrderId = null;
     this.loadOrders();
+  }
+
+  canEditOrder(): boolean {
+    return ['ProductionManager', 'SuperUser'].includes(this.currentUser?.accountType);
+  }
+
+  openEditModal(order: any): void {
+    this.editModal = { orderId: order.orderId, status: 'DISPATCHED', remarks: '' };
+    this.editModalError = '';
+    this.isSubmittingEdit = false;
+  }
+
+  submitOrderStatusUpdate(): void {
+    if (!this.editModal.status) {
+      this.editModalError = 'Please select a status';
+      return;
+    }
+    this.isSubmittingEdit = true;
+    this.editModalError = '';
+    this.apiRequestService.updateOrderStatusManual(
+      this.editModal.orderId,
+      this.editModal.status,
+      this.editModal.remarks
+    ).pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.isSubmittingEdit = false;
+          if (response?.success) {
+            this.loadOrders();
+            // Close modal (using Bootstrap)
+            const modal = document.getElementById('editOrderModal') as any;
+            if (modal) {
+              const bsModal = (window as any).bootstrap?.Modal?.getInstance(modal);
+              bsModal?.hide();
+            }
+          } else {
+            this.editModalError = response?.message || 'Failed to update order status';
+          }
+        },
+        error: (err) => {
+          this.isSubmittingEdit = false;
+          this.editModalError = err?.error?.message || 'Error updating order status';
+        }
+      });
   }
 }

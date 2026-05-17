@@ -28,7 +28,7 @@ import { CreditNotesComponent } from './credit-notes/credit-notes.component';
 import { ProductCategoryListComponent } from './product-category-list/product-category-list.component';
 
 const ADMIN = ['SuperUser'];
-const STAFF = ['SuperUser', 'SalesExecutive'];
+const STAFF = ['SuperUser', 'SalesExecutive', 'ProductionManager'];
 
 export const routes: Routes = [
     {path: 'login', component: LoginComponent, canActivate: [NoAuthGuard]},

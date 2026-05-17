@@ -356,12 +356,13 @@ createOrder(data: any): Observable<any> {
   getAllOrders(
     page: number,
     limit: number,
-    filters?: { status?: string; dealerCode?: string; salesExecutiveMobile?: string }
+    filters?: { status?: string; dealerCode?: string; salesExecutiveMobile?: string; branchId?: number }
   ) {
     const body: any = { page, limit };
     if (filters?.status) body.status = filters.status;
     if (filters?.dealerCode) body.dealerCode = filters.dealerCode;
     if (filters?.salesExecutiveMobile) body.salesExecutiveMobile = filters.salesExecutiveMobile;
+    if (filters?.branchId) body.branchId = filters.branchId;
     return this.http
       .post(this.ApiUrls.mainUrl + this.ApiUrls.getAllOrders, body)
       .pipe(map((res: any) => res));
@@ -509,6 +510,15 @@ getFocusBranches(): Observable<any> {
 
 retryFocusSync(orderId: string): Observable<any> {
   return this.http.post(this.ApiUrls.mainUrl + this.ApiUrls.retryFocusSync, { orderId })
+    .pipe(map((res: any) => res));
+}
+
+updateOrderStatusManual(orderId: string, status: string, remarks?: string): Observable<any> {
+  const body: any = { orderId, status };
+  if (remarks) {
+    body.remarks = remarks;
+  }
+  return this.http.put(this.ApiUrls.mainUrl + this.ApiUrls.updateOrderStatusManual, body)
     .pipe(map((res: any) => res));
 }
 

@@ -42,6 +42,20 @@
       <small *ngIf="salesExecutivesError" class="text-muted d-block mt-1">{{ salesExecutivesError }}</small>
     </div>
 
+    <div style="min-width: 240px;">
+      <label class="form-label small mb-1">Branch</label>
+      <input type="text"
+             class="form-control form-control-sm"
+             placeholder="Search branch code or name"
+             [(ngModel)]="branchInput"
+             (input)="onBranchInputChange($any($event).target.value)"
+             [ngbTypeahead]="branchSearch"
+             [resultFormatter]="branchFormatter"
+             [inputFormatter]="branchFormatter"
+             (selectItem)="onBranchSelect($event)" />
+      <small *ngIf="branchesError" class="text-muted d-block mt-1">{{ branchesError }}</small>
+    </div>
+
     <button *ngIf="hasActiveFilters()"
             class="btn btn-sm btn-link p-0 align-self-end"
             type="button"
@@ -206,6 +220,44 @@
                     </div>
                   </div>
 
+                  <!-- Status History -->
+                  <div class="detail-section" *ngIf="order.statusHistory?.length">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <div class="detail-label">STATUS HISTORY</div>
+                      <button *ngIf="canEditOrder()"
+                              class="btn btn-sm btn-outline-primary"
+                              data-bs-toggle="modal"
+                              (click)="openEditModal(order)"
+                              data-bs-target="#editOrderModal">
+                        Edit Status
+                      </button>
+                    </div>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                      <table class="table table-sm table-borderless mb-0" style="font-size: 0.85rem;">
+                        <thead class="table-light" style="position: sticky; top: 0;">
+                          <tr>
+                            <th>Status</th>
+                            <th>Changed At</th>
+                            <th>Changed By</th>
+                            <th>Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let entry of order.statusHistory">
+                            <td>
+                              <span class="badge" [ngClass]="getBadgeClass(entry.status)">
+                                {{ entry.status }}
+                              </span>
+                            </td>
+                            <td class="text-muted">{{ entry.changedAt | date: 'short' }}</td>
+                            <td class="text-muted">{{ entry.changedBy?.name || 'System' }}</td>
+                            <td class="text-muted">{{ entry.remarks || '—' }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </td>
@@ -234,6 +286,52 @@
       (pageChange)="handlePageChange($event)"
       [maxSize]="5">
     </ngb-pagination>
+  </div>
+
+  <!-- Edit Order Status Modal -->
+  <div class="modal fade" id="editOrderModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Update Order Status</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Order ID</label>
+            <input type="text" class="form-control" [value]="editModal.orderId" disabled />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Status <span class="text-danger">*</span></label>
+            <select class="form-select" [(ngModel)]="editModal.status">
+              <option value="">-- Select Status --</option>
+              <option value="DISPATCHED">Dispatched</option>
+              <option value="MANUALLY_DISPATCHED">Manually Dispatched</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Remarks (e.g., DC No)</label>
+            <textarea class="form-control" rows="3" [(ngModel)]="editModal.remarks"
+                      placeholder="Add DC No, delivery notes, or other remarks..."></textarea>
+          </div>
+          <div *ngIf="editModalError" class="alert alert-danger mb-0">{{ editModalError }}</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                  [disabled]="isSubmittingEdit">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" (click)="submitOrderStatusUpdate()"
+                  [disabled]="isSubmittingEdit">
+            <span *ngIf="!isSubmittingEdit">Update Status</span>
+            <span *ngIf="isSubmittingEdit">
+              <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+              Updating...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>

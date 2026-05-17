@@ -158,7 +158,7 @@
             </li>
         </ul>
 
-        <ul class="nav flex-column app-menu" *ngIf="currentUser.accountType === 'SuperUser'">
+        <ul class="nav flex-column app-menu" *ngIf="currentUser.accountType === 'SuperUser' || currentUser.accountType === 'ProductionManager'">
             <li class="nav-item treeview">
                 <div class="menu" (click)="toggleOrderMenu()">
                     <img class="px-2" src="/assets/img/Order_menu.png" alt="Logo" style="height: 20px;" title="Orders Menu">

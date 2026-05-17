@@ -62,7 +62,8 @@ export class UserListComponent extends Unsubscribable implements OnInit {
         {id: 'Contractor', name: 'Contractor'},
         {id: 'Dealer', name: 'Dealer'},
         {id: 'SuperUser', name: 'Super User'},
-        {id:'SalesExecutive', name:'SalesExecutive'}
+        {id:'SalesExecutive', name:'SalesExecutive'},
+        {id:'ProductionManager', name:'Production Manager'}
     ];
     errorsAddUser: string[] = [];
     errorsEditUser: string[] = [];
