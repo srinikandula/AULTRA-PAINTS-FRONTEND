@@ -85,7 +85,7 @@ export function Login() {
             </div>
 
             {step === 'mobile' ? (
-              <Form {...mobileForm}>
+              <Form key="mobile-form" {...mobileForm}>
                 <form className="space-y-4" onSubmit={onSendOtp}>
                   <FormField control={mobileForm.control} name="mobile" render={({ field }) => (
                     <FormItem>
@@ -112,7 +112,7 @@ export function Login() {
                 </form>
               </Form>
             ) : (
-              <Form {...otpForm}>
+              <Form key="otp-form" {...otpForm}>
                 <form className="space-y-4" onSubmit={onVerifyOtp}>
                   <FormField control={otpForm.control} name="otp" render={({ field }) => (
                     <FormItem>
