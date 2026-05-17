@@ -1,23 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { Paginated } from '@/types/user';
 import type { ProductOffer } from '@/types/product-offer';
 
-type OfferBody = Omit<ProductOffer, '_id' | 'createdAt' | 'updatedAt'>;
+type ListParams = { page: number; limit: number; searchKey?: string };
 
-// Backend productOffers list: POST /productOffers/searchProductOffers returns
-// `{ data, total, pages, currentPage }`. The mongoose document keys the
-// description on `productOfferDescription`; there is no separate `title` /
-// `validFrom` field, so we map title <- productOfferDescription.
-type RawOffer = {
-  _id: string;
-  productOfferDescription?: string;
-  productOfferImageUrl?: string;
-  validUntil?: string;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-type SearchEnvelope<T> = {
+// Backend paginated-list response shape (flat) used by /searchProductOffers.
+type ListEnvelope<T> = {
   status?: number;
   data: T[];
   total: number;
@@ -25,49 +14,72 @@ type SearchEnvelope<T> = {
   currentPage: number;
 };
 
-function toProductOffer(raw: RawOffer): ProductOffer {
+function toPaginated<T>(envelope: ListEnvelope<T>): Paginated<T> {
   return {
-    _id: raw._id,
-    title: raw.productOfferDescription ?? '',
-    productOfferImageUrl: raw.productOfferImageUrl,
-    validUntil: raw.validUntil,
-    createdAt: raw.createdAt ?? '',
-    updatedAt: raw.updatedAt ?? '',
+    data: envelope.data,
+    pagination: {
+      currentPage: envelope.currentPage,
+      totalPages: envelope.pages,
+      totalRecords: envelope.total,
+    },
   };
 }
 
-export function useProductOffers() {
-  return useQuery<ProductOffer[]>({
-    queryKey: ['product-offers', 'list'],
+type CreateBody = {
+  productOfferDescription: string;
+  validUntil?: string;
+  productOfferStatus: 'Active' | 'Inactive';
+  cashback: number;
+  redeemPoints: number;
+  productCategory: string | null;
+  price: Array<{ refId: string; price: number }>;
+  productOfferImage: string; // base64 data URI
+};
+
+type UpdateBody = {
+  _id: string;
+  productOfferDescription: string;
+  validUntil?: string;
+  productOfferStatus: 'Active' | 'Inactive';
+  cashback: number;
+  redeemPoints: number;
+  productCategory: string | null;
+  price: Array<{ refId: string; price: number }>;
+  productOfferImage?: string; // optional on update
+};
+
+export function useProductOffers(params: ListParams) {
+  return useQuery<Paginated<ProductOffer>>({
+    queryKey: ['product-offers', 'list', params],
     queryFn: async () => {
-      const env = await api<SearchEnvelope<RawOffer>>('productOffers/searchProductOffers', {
-        method: 'POST',
-        body: { page: 1, limit: 100 },
-      });
-      return env.data.map(toProductOffer);
+      const env = await api<ListEnvelope<ProductOffer>>(
+        'productOffers/searchProductOffers',
+        {
+          method: 'POST',
+          body: {
+            page: params.page,
+            limit: params.limit,
+            searchKey: params.searchKey,
+          },
+        },
+      );
+      return toPaginated(env);
     },
   });
 }
 
 export function useCreateProductOffer() {
   const qc = useQueryClient();
-  return useMutation<ProductOffer, Error, OfferBody>({
-    // TODO(backend): URL is correct but the backend's createProductOffer
-    // expects a multipart-style body with productDescription, productStatus,
-    // price (object of volume->[{refId:price}]), productImage (base64),
-    // focusProductId, focusProductMapping, etc. The current simple form
-    // (title/description/validFrom/validUntil) cannot produce that body. The
-    // OfferFormDialog needs to be rebuilt before this mutation will succeed.
-    mutationFn: (body) => api<ProductOffer>('productOffers/create', { method: 'POST', body }),
+  return useMutation<ProductOffer, Error, CreateBody>({
+    mutationFn: (body) =>
+      api<ProductOffer>('productOffers/create', { method: 'POST', body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['product-offers', 'list'] }),
   });
 }
 
 export function useUpdateProductOffer() {
   const qc = useQueryClient();
-  return useMutation<ProductOffer, Error, { _id: string } & OfferBody>({
-    // TODO(backend): URL matches PUT /productOffers/update/:id but the body
-    // schema diverges (see useCreateProductOffer). Form needs rework first.
+  return useMutation<ProductOffer, Error, UpdateBody>({
     mutationFn: ({ _id, ...body }) =>
       api<ProductOffer>(`productOffers/update/${_id}`, { method: 'PUT', body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['product-offers', 'list'] }),

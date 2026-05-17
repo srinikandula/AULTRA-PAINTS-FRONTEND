@@ -1,11 +1,13 @@
 export type ProductOffer = {
   _id: string;
-  title: string;
-  description?: string;
+  productOfferDescription: string;
   productOfferImageUrl?: string;
-  validFrom?: string;
+  productOfferStatus: 'Active' | 'Inactive';
+  cashback: number;
+  redeemPoints: number;
   validUntil?: string;
-  applicableProductIds?: string[];
-  createdAt: string;
-  updatedAt: string;
+  productCategory?: { _id: string; name: string } | string | null;
+  price?: Array<{ refId: string; price: number }>;
+  createdAt?: string;
+  updatedAt?: string;
 };

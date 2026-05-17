@@ -1,185 +1,228 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from '@/components/ui/form';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
-import {
-  useProductOffers, useCreateProductOffer, useUpdateProductOffer, useDeleteProductOffer,
+  useProductOffers, useUpdateProductOffer, useDeleteProductOffer,
 } from './hooks';
+import { OfferFormDialog } from './offer-form-dialog';
 import type { ProductOffer } from '@/types/product-offer';
 
-// TODO: applicableProductIds[] multi-select omitted for v1 — the plan flagged it as optional.
+const PAGE_SIZE = 12;
 
-const offerSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  description: z.string().optional(),
-  productOfferImageUrl: z.string().url('Must be a URL').optional().or(z.literal('')),
-  validFrom: z.string().optional(),
-  validUntil: z.string().optional(),
-});
-type OfferValues = z.infer<typeof offerSchema>;
-
-function OfferFormDialog({ offer, onClose }: { offer?: ProductOffer; onClose: () => void }) {
-  const create = useCreateProductOffer();
-  const update = useUpdateProductOffer();
-  const form = useForm<OfferValues>({
-    resolver: zodResolver(offerSchema),
-    defaultValues: {
-      title: offer?.title ?? '',
-      description: offer?.description ?? '',
-      productOfferImageUrl: offer?.productOfferImageUrl ?? '',
-      validFrom: offer?.validFrom ?? '',
-      validUntil: offer?.validUntil ?? '',
-    },
-  });
-  const onSubmit = form.handleSubmit((values) => {
-    const mutator = (offer ? update : create) as unknown as {
-      mutate: (
-        payload: unknown,
-        opts: { onSuccess: () => void; onError: (e: Error) => void },
-      ) => void;
-    };
-    const payload = offer ? { _id: offer._id, ...values } : values;
-    mutator.mutate(payload, {
-      onSuccess: () => { toast.success(offer ? 'Offer updated' : 'Offer created'); onClose(); },
-      onError: (e) => toast.error(e.message),
-    });
-  });
-  const isPending = create.isPending || update.isPending;
-  return (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{offer ? 'Edit offer' : 'New offer'}</DialogTitle>
-      </DialogHeader>
-      <Form {...form}>
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <FormField control={form.control} name="title" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="description" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="productOfferImageUrl" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Image URL</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="validFrom" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Valid from</FormLabel>
-              <FormControl><Input type="date" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <FormField control={form.control} name="validUntil" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Valid until</FormLabel>
-              <FormControl><Input type="date" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-          <DialogFooter>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? 'Saving…' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </Form>
-    </DialogContent>
+function StatusPill({ status }: { status: 'Active' | 'Inactive' }) {
+  return status === 'Active' ? (
+    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+      Active
+    </span>
+  ) : (
+    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      Inactive
+    </span>
   );
 }
 
+function categoryLabel(c: ProductOffer['productCategory']): string | null {
+  if (!c) return null;
+  if (typeof c === 'string') return null;
+  return c.name ?? null;
+}
+
+function formatDate(value?: string): string {
+  if (!value) return 'No expiry';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString();
+}
+
 export function ProductOffers() {
-  const { data, isLoading, isError, error } = useProductOffers();
-  const remove = useDeleteProductOffer();
+  const [page, setPage] = useState(1);
+  const [searchKey, setSearchKey] = useState('');
   const [editing, setEditing] = useState<ProductOffer | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const query = useProductOffers({
+    page,
+    limit: PAGE_SIZE,
+    searchKey: searchKey || undefined,
+  });
+  const update = useUpdateProductOffer();
+  const remove = useDeleteProductOffer();
+
+  const onToggleStatus = (offer: ProductOffer, nextActive: boolean) => {
+    const productCategoryId =
+      offer.productCategory && typeof offer.productCategory === 'object'
+        ? offer.productCategory._id
+        : (offer.productCategory ?? null);
+    update.mutate(
+      {
+        _id: offer._id,
+        productOfferDescription: offer.productOfferDescription,
+        cashback: offer.cashback,
+        redeemPoints: offer.redeemPoints,
+        validUntil: offer.validUntil,
+        productCategory: productCategoryId,
+        productOfferStatus: nextActive ? 'Active' : 'Inactive',
+        price: [],
+      },
+      {
+        onSuccess: () => toast.success('Status updated'),
+        onError: (e) => toast.error(e.message),
+      },
+    );
+  };
+
+  const onDelete = (offer: ProductOffer) => {
+    remove.mutate(
+      { _id: offer._id },
+      {
+        onSuccess: () => toast.success('Offer deleted'),
+        onError: (e) => toast.error(e.message),
+      },
+    );
+  };
+
+  const offers = query.data?.data ?? [];
+  const totalPages = query.data?.pagination.totalPages ?? 1;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Product offers</h1>
-        <Dialog open={creating} onOpenChange={setCreating}>
-          <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" /> New offer</Button>
-          </DialogTrigger>
-          {creating && <OfferFormDialog onClose={() => setCreating(false)} />}
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchKey}
+              onChange={(e) => { setSearchKey(e.target.value); setPage(1); }}
+              className="w-56 pl-8"
+            />
+          </div>
+          <Dialog open={creating} onOpenChange={setCreating}>
+            <DialogTrigger asChild>
+              <Button><Plus className="mr-2 h-4 w-4" /> New offer</Button>
+            </DialogTrigger>
+            {creating && <OfferFormDialog onClose={() => setCreating(false)} />}
+          </Dialog>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>All offers</CardTitle></CardHeader>
-        <CardContent>
-          {isError && <p className="text-sm text-destructive">Couldn't load: {error.message}</p>}
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Valid from</TableHead>
-                  <TableHead>Valid until</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data?.map((o) => (
-                  <TableRow key={o._id}>
-                    <TableCell>{o.title}</TableCell>
-                    <TableCell>{o.validFrom ?? '—'}</TableCell>
-                    <TableCell>{o.validUntil ?? '—'}</TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      <Button size="sm" variant="outline" onClick={() => setEditing(o)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => remove.mutate(
-                          { _id: o._id },
-                          {
-                            onSuccess: () => toast.success('Offer deleted'),
-                            onError: (e) => toast.error(e.message),
-                          },
-                        )}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {query.isError && (
+        <p className="text-sm text-destructive">
+          Couldn't load: {query.error.message}
+        </p>
+      )}
+
+      {query.isLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-80 w-full" />
+          ))}
+        </div>
+      ) : offers.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No product offers yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {offers.map((o) => {
+            const category = categoryLabel(o.productCategory);
+            return (
+              <Card key={o._id} className="overflow-hidden">
+                <div className="relative">
+                  {o.productOfferImageUrl ? (
+                    <img
+                      src={o.productOfferImageUrl}
+                      alt={o.productOfferDescription}
+                      className="h-48 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-48 w-full items-center justify-center bg-muted text-sm text-muted-foreground">
+                      No image
+                    </div>
+                  )}
+                  <div className="absolute left-2 top-2">
+                    <StatusPill status={o.productOfferStatus} />
+                  </div>
+                  <div className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-background/90 p-1 shadow-sm">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => setEditing(o)}
+                      aria-label="Edit offer"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => onDelete(o)}
+                      aria-label="Delete offer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <CardContent className="space-y-2 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="line-clamp-2 text-sm font-semibold">
+                      {o.productOfferDescription}
+                    </h3>
+                    <Switch
+                      checked={o.productOfferStatus === 'Active'}
+                      onCheckedChange={(c) => onToggleStatus(o, c)}
+                      aria-label="Toggle offer status"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Cashback: ₹{o.cashback} | Redeem: {o.redeemPoints} pts
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Valid until: {formatDate(o.validUntil)}
+                  </p>
+                  {category && (
+                    <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {category}
+                    </span>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {query.data && totalPages > 1 && (
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page >= totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         {editing && <OfferFormDialog offer={editing} onClose={() => setEditing(null)} />}
