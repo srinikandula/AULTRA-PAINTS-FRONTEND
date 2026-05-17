@@ -119,11 +119,13 @@ export function Login() {
                       <FormLabel>One-time password</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="• • • • • •"
+                          type="text"
+                          placeholder="6-digit code"
                           inputMode="numeric"
                           maxLength={6}
+                          autoComplete="one-time-code"
                           autoFocus
-                          className="h-11 text-center text-lg tracking-[0.4em]"
+                          className="h-11"
                           {...field}
                         />
                       </FormControl>
