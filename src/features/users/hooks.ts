@@ -26,3 +26,21 @@ export function useResetUserPassword() {
       api<{ message: string }>('users/resetPassword', { method: 'POST', body }),
   });
 }
+
+export function useUnverifiedUsers(params: { page: number; limit: number }) {
+  return useQuery<Paginated<User>>({
+    queryKey: ['users', 'unverified', params],
+    queryFn: () => api<Paginated<User>>('users/unverified', { method: 'POST', body: params }),
+  });
+}
+
+export function useVerifyUser() {
+  const qc = useQueryClient();
+  return useMutation<User, Error, { _id: string }>({
+    mutationFn: (body) => api<User>('users/verify', { method: 'PATCH', body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users', 'unverified'] });
+      qc.invalidateQueries({ queryKey: ['users', 'list'] });
+    },
+  });
+}

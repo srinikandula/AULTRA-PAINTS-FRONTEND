@@ -7,11 +7,11 @@ import { FeatureStub } from '@/features/_stub';
 import { Login } from '@/features/auth/login';
 import { Dashboard } from '@/features/dashboard/dashboard';
 import { UserList as Users } from '@/features/users/user-list';
+import { UnverifiedUsers } from '@/features/users/unverified-users';
 
 // Real components are wired in Phases 3-6; replace these stubs as we go.
 const Register       = () => <FeatureStub name="Register" />;
 const PrivacyPolicy  = () => <FeatureStub name="Privacy Policy" />;
-const UnverifiedUsers = () => <FeatureStub name="Unverified Users" />;
 const BatchList      = () => <FeatureStub name="Batch List" />;
 const CreateBatch    = () => <FeatureStub name="Create Batch" />;
 const ProductList    = () => <FeatureStub name="Product List" />;
