@@ -47,3 +47,10 @@ export function useDeleteProduct() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['products', 'list'] }),
   });
 }
+
+export function useProductCatalog(params: ListParams) {
+  return useQuery<Paginated<Product>>({
+    queryKey: ['products', 'catalog', params],
+    queryFn: () => api<Paginated<Product>>('products/catalog', { method: 'POST', body: params }),
+  });
+}
