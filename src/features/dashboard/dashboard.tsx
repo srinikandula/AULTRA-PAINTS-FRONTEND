@@ -1,6 +1,11 @@
+import { lazy, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useBatchStatistics } from './hooks';
-import { BatchStatsChart } from './batch-stats-chart';
+
+const BatchStatsChart = lazy(() =>
+  import('./batch-stats-chart').then((m) => ({ default: m.BatchStatsChart })),
+);
 
 export function Dashboard() {
   const stats = useBatchStatistics();
@@ -17,7 +22,9 @@ export function Dashboard() {
               Couldn't load chart: {stats.error.message}
             </p>
           ) : (
-            <BatchStatsChart data={stats.data} isLoading={stats.isLoading} />
+            <Suspense fallback={<Skeleton className="h-[360px] w-full" />}>
+              <BatchStatsChart data={stats.data} isLoading={stats.isLoading} />
+            </Suspense>
           )}
         </CardContent>
       </Card>
