@@ -1,4 +1,6 @@
-export type AccountType = 'SuperUser' | 'SalesExecutive' | 'Dealer' | 'Painter';
+import type { AccountType } from '@/stores/auth-store';
+
+export type { AccountType } from '@/stores/auth-store';
 
 export type User = {
   _id: string;
