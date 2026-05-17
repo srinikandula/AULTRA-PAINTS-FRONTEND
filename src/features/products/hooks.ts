@@ -54,3 +54,10 @@ export function useProductCatalog(params: ListParams) {
     queryFn: () => api<Paginated<Product>>('products/catalog', { method: 'POST', body: params }),
   });
 }
+
+export function useProductDataList(params: ListParams) {
+  return useQuery<Paginated<Product>>({
+    queryKey: ['products', 'data-list', params],
+    queryFn: () => api<Paginated<Product>>('products/data', { method: 'POST', body: params }),
+  });
+}
