@@ -1,24 +1,40 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog } from '@/components/ui/dialog';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useUnverifiedUsers, useVerifyUser } from './hooks';
+import { useUnverifiedUsers } from './hooks';
+import { UserFormDialog } from './user-form-dialog';
+import type { User } from '@/types/user';
 
 export function UnverifiedUsers() {
   const [page, setPage] = useState(1);
+  const [searchKey, setSearchKey] = useState('');
+  const [editing, setEditing] = useState<User | null>(null);
   const limit = 20;
-  const { data, isLoading, isError, error } = useUnverifiedUsers({ page, limit });
-  const verify = useVerifyUser();
+
+  const { data, isLoading, isError, error } = useUnverifiedUsers({ page, limit, searchKey });
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Unverified users</h1>
       <Card>
-        <CardHeader><CardTitle>Pending verification</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Pending verification</CardTitle>
+          <div className="mt-2">
+            <Input
+              placeholder="Search by name or mobile..."
+              value={searchKey}
+              onChange={(e) => { setSearchKey(e.target.value); setPage(1); }}
+              className="max-w-sm"
+            />
+          </div>
+        </CardHeader>
         <CardContent>
           {isError && <p className="text-sm text-destructive">Couldn't load: {error.message}</p>}
           {isLoading ? (
@@ -40,22 +56,13 @@ export function UnverifiedUsers() {
                 <TableBody>
                   {data?.data.map((u) => (
                     <TableRow key={u._id}>
-                      <TableCell>{u.name || '—'}</TableCell>
+                      <TableCell>{u.name || '-'}</TableCell>
                       <TableCell>{u.mobile}</TableCell>
                       <TableCell>{u.accountType}</TableCell>
-                      <TableCell>{u.dealerCode ?? u.parentDealerCode ?? '—'}</TableCell>
+                      <TableCell>{u.dealerCode ?? u.parentDealerCode ?? '-'}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          onClick={() => verify.mutate(
-                            { _id: u._id },
-                            {
-                              onSuccess: () => toast.success(`Verified ${u.mobile}`),
-                              onError: (e) => toast.error(e.message),
-                            },
-                          )}
-                        >
-                          Verify
+                        <Button size="sm" variant="outline" onClick={() => setEditing(u)}>
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -75,6 +82,10 @@ export function UnverifiedUsers() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        {editing && <UserFormDialog user={editing} onClose={() => setEditing(null)} />}
+      </Dialog>
     </div>
   );
 }

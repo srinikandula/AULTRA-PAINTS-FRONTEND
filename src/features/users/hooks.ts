@@ -25,6 +25,11 @@ function toPaginated<T>(envelope: ListEnvelope<T>): Paginated<T> {
   };
 }
 
+function invalidateUserLists(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['users', 'list'] });
+  qc.invalidateQueries({ queryKey: ['users', 'unverified'] });
+}
+
 export function useUsers(params: ListParams) {
   return useQuery<Paginated<User>>({
     queryKey: ['users', 'list', params],
@@ -52,10 +57,30 @@ export function useToggleUserStatus() {
   });
 }
 
-export function useResetUserPassword() {
-  return useMutation<{ message: string }, Error, { mobile: string }>({
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation<User, Error, Partial<User>>({
     mutationFn: (body) =>
-      api<{ message: string }>('users/resetPassword', { method: 'POST', body }),
+      api<User>('users/add', { method: 'POST', body }),
+    onSuccess: () => invalidateUserLists(qc),
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation<User, Error, { _id: string } & Partial<Omit<User, '_id'>>>({
+    mutationFn: ({ _id, ...body }) =>
+      api<User>(`users/${_id}`, { method: 'PUT', body }),
+    onSuccess: () => invalidateUserLists(qc),
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation<{ message: string }, Error, { _id: string }>({
+    mutationFn: ({ _id }) =>
+      api<{ message: string }>(`users/${_id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateUserLists(qc),
   });
 }
 
@@ -72,17 +97,6 @@ export function useUnverifiedUsers(params: { page: number; limit: number; search
         },
       });
       return toPaginated(env);
-    },
-  });
-}
-
-export function useVerifyUser() {
-  const qc = useQueryClient();
-  return useMutation<User, Error, { _id: string }>({
-    mutationFn: (body) => api<User>('users/verify', { method: 'PATCH', body }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['users', 'unverified'] });
-      qc.invalidateQueries({ queryKey: ['users', 'list'] });
     },
   });
 }
