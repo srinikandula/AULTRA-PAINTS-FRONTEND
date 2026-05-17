@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthStore, type AccountType } from '@/stores/auth-store';
 
 type SendOtpRes = { message: string };
 
@@ -11,7 +11,19 @@ export function useSendOtp() {
   });
 }
 
-type VerifyOtpRes = { token: string };
+// Shape returned by the backend's /auth/verifyOTP and /auth/login handlers.
+// The JWT only carries {name, mobile, email, _id}; accountType + id are
+// top-level fields on the response body.
+type VerifyOtpRes = {
+  status: number;
+  token: string;
+  accountType: AccountType;
+  id: string;
+  fullName?: string;
+  email?: string;
+  mobile?: string;
+  message?: string;
+};
 
 export function useVerifyOtp() {
   const login = useAuthStore((s) => s.login);
@@ -22,7 +34,7 @@ export function useVerifyOtp() {
         body,
         skipAuth: true,
       });
-      login(res.token);
+      login({ token: res.token, accountType: res.accountType, userId: res.id });
       return res;
     },
   });
