@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Plus, Trash2 } from 'lucide-react';
+import { ImagePlus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -97,9 +97,11 @@ export function CatalogForm({ initial }: CatalogFormProps) {
   const create = useCreateCatalog();
   const update = useUpdateCatalog();
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [imageDataUri, setImageDataUri] = useState<string | null>(
     initial?.productOfferImageUrl ?? null,
   );
+  const hasNewImage = imageDataUri?.startsWith('data:') ?? false;
 
   const defaultRows = useMemo(() => {
     if (!initial) return [{ volume: '', price: 0 }];
@@ -200,13 +202,58 @@ export function CatalogForm({ initial }: CatalogFormProps) {
               <label className="text-sm font-medium leading-none">
                 Image{isEdit ? '' : ' *'}
               </label>
-              <Input type="file" accept="image/*" onChange={onFileChange} />
-              {imageDataUri && (
-                <img
-                  src={imageDataUri}
-                  alt="Preview"
-                  className="mt-2 h-32 w-full max-w-xs rounded-md border object-cover"
-                />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={onFileChange}
+                className="hidden"
+              />
+              {imageDataUri ? (
+                <div className="space-y-2">
+                  <img
+                    src={imageDataUri}
+                    alt="Preview"
+                    className="h-32 w-full max-w-xs rounded-md border object-cover"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <ImagePlus className="mr-2 h-4 w-4" />
+                      Replace image
+                    </Button>
+                    {hasNewImage && isEdit && initial && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setImageDataUri(initial.productOfferImageUrl ?? null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                      >
+                        Cancel change
+                      </Button>
+                    )}
+                    {hasNewImage && (
+                      <span className="text-xs text-muted-foreground">New image selected</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImagePlus className="mr-2 h-4 w-4" />
+                  Choose image
+                </Button>
               )}
             </div>
 

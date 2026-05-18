@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
   DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -29,9 +29,11 @@ export function SchemeFormDialog({
 }) {
   const create = useCreateRewardScheme();
   const update = useUpdateRewardScheme();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [imageDataUri, setImageDataUri] = useState<string | null>(
     scheme?.rewardSchemeImageUrl ?? null,
   );
+  const hasNewImage = imageDataUri?.startsWith('data:') ?? false;
 
   const form = useForm<SchemeValues>({
     resolver: zodResolver(schema),
@@ -96,13 +98,58 @@ export function SchemeFormDialog({
             <label className="text-sm font-medium leading-none">
               Image{scheme ? '' : ' *'}
             </label>
-            <Input type="file" accept="image/*" onChange={onFileChange} />
-            {imageDataUri && (
-              <img
-                src={imageDataUri}
-                alt="Preview"
-                className="mt-2 h-32 w-full rounded-md border object-cover"
-              />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={onFileChange}
+              className="hidden"
+            />
+            {imageDataUri ? (
+              <div className="space-y-2">
+                <img
+                  src={imageDataUri}
+                  alt="Preview"
+                  className="h-32 w-full rounded-md border object-cover"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ImagePlus className="mr-2 h-4 w-4" />
+                    Replace image
+                  </Button>
+                  {hasNewImage && scheme && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setImageDataUri(scheme.rewardSchemeImageUrl ?? null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                    >
+                      Cancel change
+                    </Button>
+                  )}
+                  {hasNewImage && (
+                    <span className="text-xs text-muted-foreground">New image selected</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImagePlus className="mr-2 h-4 w-4" />
+                Choose image
+              </Button>
             )}
           </div>
 

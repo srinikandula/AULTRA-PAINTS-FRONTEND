@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { ImagePlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -47,9 +48,11 @@ export function OfferFormDialog({
   const create = useCreateProductOffer();
   const update = useUpdateProductOffer();
   const categoriesQuery = useProductCategories();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [imageDataUri, setImageDataUri] = useState<string | null>(
     offer?.productOfferImageUrl ?? null,
   );
+  const hasNewImage = imageDataUri?.startsWith('data:') ?? false;
 
   const form = useForm<OfferValues>({
     resolver: zodResolver(schema),
@@ -133,13 +136,58 @@ export function OfferFormDialog({
             <label className="text-sm font-medium leading-none">
               Image{offer ? '' : ' *'}
             </label>
-            <Input type="file" accept="image/*" onChange={onFileChange} />
-            {imageDataUri && (
-              <img
-                src={imageDataUri}
-                alt="Preview"
-                className="mt-2 h-32 w-full rounded-md border object-cover"
-              />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={onFileChange}
+              className="hidden"
+            />
+            {imageDataUri ? (
+              <div className="space-y-2">
+                <img
+                  src={imageDataUri}
+                  alt="Preview"
+                  className="h-32 w-full rounded-md border object-cover"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ImagePlus className="mr-2 h-4 w-4" />
+                    Replace image
+                  </Button>
+                  {hasNewImage && offer && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setImageDataUri(offer.productOfferImageUrl ?? null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                    >
+                      Cancel change
+                    </Button>
+                  )}
+                  {hasNewImage && (
+                    <span className="text-xs text-muted-foreground">New image selected</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImagePlus className="mr-2 h-4 w-4" />
+                Choose image
+              </Button>
             )}
           </div>
 
