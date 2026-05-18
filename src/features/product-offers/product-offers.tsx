@@ -80,6 +80,7 @@ export function ProductOffers() {
   };
 
   const onDelete = (offer: ProductOffer) => {
+    if (!window.confirm(`Delete offer "${offer.productOfferDescription}"? This cannot be undone.`)) return;
     remove.mutate(
       { _id: offer._id },
       {
@@ -134,7 +135,19 @@ export function ProductOffers() {
           {offers.map((o) => {
             const category = categoryLabel(o.productCategory);
             return (
-              <Card key={o._id} className="overflow-hidden">
+              <Card
+                key={o._id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setEditing(o)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setEditing(o);
+                  }
+                }}
+                className="cursor-pointer overflow-hidden transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
                 <div className="relative">
                   {o.productOfferImageUrl ? (
                     <img
@@ -150,7 +163,10 @@ export function ProductOffers() {
                   <div className="absolute left-2 top-2">
                     <StatusPill status={o.productOfferStatus} />
                   </div>
-                  <div className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-background/90 p-1 shadow-sm">
+                  <div
+                    className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-background/90 p-1 shadow-sm"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button
                       size="icon"
                       variant="ghost"
@@ -176,11 +192,13 @@ export function ProductOffers() {
                     <h3 className="line-clamp-2 text-sm font-semibold">
                       {o.productOfferDescription}
                     </h3>
-                    <Switch
-                      checked={o.productOfferStatus === 'Active'}
-                      onCheckedChange={(c) => onToggleStatus(o, c)}
-                      aria-label="Toggle offer status"
-                    />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Switch
+                        checked={o.productOfferStatus === 'Active'}
+                        onCheckedChange={(c) => onToggleStatus(o, c)}
+                        aria-label="Toggle offer status"
+                      />
+                    </div>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Cashback: ₹{o.cashback} | Redeem: {o.redeemPoints} pts

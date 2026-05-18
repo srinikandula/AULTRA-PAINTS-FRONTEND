@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,7 @@ function categoryIdOf(c: CatalogItem['productCategory']): string | null {
 export function ProductCatalog() {
   const accountType = useAuthStore((s) => s.accountType);
   const isDealer = accountType === 'Dealer';
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [searchKey, setSearchKey] = useState('');
 
@@ -81,6 +82,7 @@ export function ProductCatalog() {
   };
 
   const onDelete = (item: CatalogItem) => {
+    if (!window.confirm(`Delete product "${item.productOfferDescription}"? This cannot be undone.`)) return;
     remove.mutate(
       { _id: item._id },
       {
@@ -88,6 +90,11 @@ export function ProductCatalog() {
         onError: (e) => toast.error(e.message),
       },
     );
+  };
+
+  const openEdit = (item: CatalogItem) => {
+    if (isDealer) return;
+    navigate(`/edit-product/${item._id}`, { state: { catalog: item } });
   };
 
   return (
@@ -135,7 +142,24 @@ export function ProductCatalog() {
             const status: 'Active' | 'Inactive' =
               item.productOfferStatus === 'Inactive' ? 'Inactive' : 'Active';
             return (
-              <Card key={item._id} className="overflow-hidden">
+              <Card
+                key={item._id}
+                role={isDealer ? undefined : 'button'}
+                tabIndex={isDealer ? undefined : 0}
+                onClick={isDealer ? undefined : () => openEdit(item)}
+                onKeyDown={isDealer ? undefined : (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openEdit(item);
+                  }
+                }}
+                className={
+                  'overflow-hidden ' +
+                  (isDealer
+                    ? ''
+                    : 'cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2')
+                }
+              >
                 <div className="relative">
                   {item.productOfferImageUrl ? (
                     <img
@@ -152,7 +176,10 @@ export function ProductCatalog() {
                     <StatusPill status={status} />
                   </div>
                   {!isDealer && (
-                    <div className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-background/90 p-1 shadow-sm">
+                    <div
+                      className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-background/90 p-1 shadow-sm"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Button
                         asChild
                         size="icon"
@@ -182,11 +209,13 @@ export function ProductCatalog() {
                       {item.productOfferDescription}
                     </h3>
                     {!isDealer && (
-                      <Switch
-                        checked={status === 'Active'}
-                        onCheckedChange={(c) => onToggleStatus(item, c)}
-                        aria-label="Toggle product status"
-                      />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Switch
+                          checked={status === 'Active'}
+                          onCheckedChange={(c) => onToggleStatus(item, c)}
+                          aria-label="Toggle product status"
+                        />
+                      </div>
                     )}
                   </div>
                   {category && (
