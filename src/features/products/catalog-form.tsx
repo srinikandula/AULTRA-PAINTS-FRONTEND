@@ -22,6 +22,7 @@ import { useProductCategories } from './product-categories-hooks';
 import {
   useCreateCatalog, useUpdateCatalog, useFocusProducts,
 } from './hooks';
+import { compressImage } from '@/lib/compress-image';
 import type { CatalogItem } from './hooks';
 
 const NONE = '__none__';
@@ -125,13 +126,17 @@ export function CatalogForm({ initial }: CatalogFormProps) {
   const rows = useFieldArray({ control: form.control, name: 'volumeRows' });
   const statusValue = form.watch('productStatus');
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () =>
-      setImageDataUri(typeof reader.result === 'string' ? reader.result : null);
-    reader.readAsDataURL(file);
+    try {
+      // Downscale + JPEG-encode so the base64 payload fits under the
+      // backend's bodyParser.json() default 100KB limit.
+      const compressed = await compressImage(file);
+      setImageDataUri(compressed);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not read image');
+    }
   };
 
   const onSubmit = form.handleSubmit((values) => {

@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/form';
 import { useCreateProductOffer, useUpdateProductOffer } from './hooks';
 import { useProductCategories } from '@/features/products/product-categories-hooks';
+import { compressImage } from '@/lib/compress-image';
 import type { ProductOffer } from '@/types/product-offer';
 
 const NONE = '__none__';
@@ -66,12 +67,17 @@ export function OfferFormDialog({
     },
   });
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setImageDataUri(typeof reader.result === 'string' ? reader.result : null);
-    reader.readAsDataURL(file);
+    try {
+      // Downscale + JPEG-encode so the base64 payload fits under the
+      // backend's bodyParser.json() default 100KB limit.
+      const compressed = await compressImage(file);
+      setImageDataUri(compressed);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not read image');
+    }
   };
 
   const onSubmit = form.handleSubmit((values) => {
