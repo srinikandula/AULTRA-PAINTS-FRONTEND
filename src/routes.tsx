@@ -24,6 +24,7 @@ import { ProductOffers } from '@/features/product-offers/product-offers';
 import { RewardSchemes } from '@/features/reward-schemes/reward-schemes';
 import { Payouts } from '@/features/payouts/payouts';
 import { PrivacyPolicy } from '@/features/privacy-policy/privacy-policy';
+import { Deals } from '@/features/deals/deals';
 
 export function AppRoutes() {
   return (
@@ -60,6 +61,7 @@ export function AppRoutes() {
             <Route path="/transaction-ledger" element={<TransactionLedger />} />
             <Route path="/credit-notes" element={<CreditNotes />} />
             <Route path="/product-offers" element={<ProductOffers />} />
+            <Route path="/deals" element={<Deals />} />
             <Route path="/reward-schemes" element={<RewardSchemes />} />
             <Route path="/payouts" element={<Payouts />} />
           </Route>
