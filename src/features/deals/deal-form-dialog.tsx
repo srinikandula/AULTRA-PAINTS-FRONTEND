@@ -250,7 +250,17 @@ export function DealFormDialog({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Expiration date</FormLabel>
-                <FormControl><Input type="date" {...field} /></FormControl>
+                <FormControl>
+                  {/* On create: clamp to today or later (a past date would make
+                      the deal invisible to dealers the moment it's saved).
+                      On edit: leave unconstrained — admins may need to extend
+                      an already-expired deal or audit historical entries. */}
+                  <Input
+                    type="date"
+                    min={deal ? undefined : new Date().toISOString().slice(0, 10)}
+                    {...field}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
