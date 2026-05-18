@@ -1,29 +1,22 @@
-// Client-side image compression: downscale + JPEG-encode so the resulting
-// base64 data URI fits comfortably under the backend's bodyParser.json()
-// limit (default 100 KB). Returns a JPEG data URI on success.
+// Client-side image compression: downscale + JPEG-encode if the source is
+// larger than the backend's 5 MB upload ceiling, otherwise pass through
+// untouched.
 //
-// Why: the backend accepts images as base64 inside a JSON body. Real photos
-// straight off a phone come in at 3-5 MB raw / 4-7 MB base64-encoded, which
-// makes Express drop the connection before the controller sees the request
-// — the browser surfaces that as a generic 'Failed to fetch'. Aggressive
-// downscaling + JPEG re-encoding keeps the payload safely under the limit.
-//
-// Hitting a target size requires an iterative pass: a single fixed quality
-// + max-edge can't guarantee the output stays under the threshold for
-// every input. We loop, shrinking max-edge and quality until the encoded
-// length fits or we exhaust the steps.
+// Why an iterative pass: encoder output for a fixed (maxEdge, quality) pair
+// can't be predicted from input size, so we shrink quality + max edge in
+// steps until the resulting data URI length is under the target. Real
+// phone photos usually pass through in step 1.
 
 export type CompressOptions = {
   /**
-   * Target maximum SERIALIZED size (in bytes) of the resulting data URI.
-   * Defaults to 80 KB so the full JSON request body (image + other form
-   * fields, base64 overhead, etc.) comfortably fits under the backend's
-   * 100 KB bodyParser limit.
+   * Hard ceiling on the resulting data URI byte length. Defaults to 6 MB so
+   * a typical photo fits comfortably under the backend's 8 MB body-parser
+   * limit (after JSON envelope + other fields).
    */
   targetBytes?: number;
-  /** Start max edge in pixels. Defaults to 1024. */
+  /** Start max edge in pixels. Defaults to 2400 (preserves real photo detail). */
   startMaxEdge?: number;
-  /** Start JPEG quality (0-1). Defaults to 0.82. */
+  /** Start JPEG quality (0-1). Defaults to 0.9. */
   startQuality?: number;
   /** Target MIME type. Defaults to image/jpeg. */
   mimeType?: 'image/jpeg' | 'image/png' | 'image/webp';
@@ -32,14 +25,13 @@ export type CompressOptions = {
 type Step = { maxEdge: number; quality: number };
 
 const DEFAULT_STEPS: Step[] = [
-  { maxEdge: 1024, quality: 0.82 },
+  { maxEdge: 2400, quality: 0.9 },
+  { maxEdge: 2000, quality: 0.85 },
+  { maxEdge: 1600, quality: 0.8 },
+  { maxEdge: 1280, quality: 0.75 },
   { maxEdge: 1024, quality: 0.7 },
-  { maxEdge: 800, quality: 0.7 },
-  { maxEdge: 800, quality: 0.55 },
+  { maxEdge: 800, quality: 0.65 },
   { maxEdge: 640, quality: 0.6 },
-  { maxEdge: 640, quality: 0.45 },
-  { maxEdge: 480, quality: 0.5 },
-  { maxEdge: 480, quality: 0.35 },
 ];
 
 async function fileToImage(file: File): Promise<HTMLImageElement> {
@@ -79,21 +71,38 @@ function encode(
   return canvas.toDataURL(mimeType, quality);
 }
 
+async function readAsDataUri(file: File): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('Unexpected FileReader result type'));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function compressImage(
   file: File,
   options: CompressOptions = {},
 ): Promise<string> {
   const {
-    targetBytes = 80 * 1024,
+    targetBytes = 6 * 1024 * 1024,
     startMaxEdge,
     startQuality,
     mimeType = 'image/jpeg',
   } = options;
 
-  const img = await fileToImage(file);
+  // Fast path: image is already small enough — read straight to a data URI
+  // and skip the canvas re-encode. Base64 inflates raw bytes by ~33%, so we
+  // approximate the resulting data URI length conservatively.
+  const projectedDataUriBytes = Math.ceil(file.size * 1.4);
+  if (projectedDataUriBytes <= targetBytes) {
+    return await readAsDataUri(file);
+  }
 
-  // Build the descent. If the caller passed custom starts, anchor the
-  // first step to those values; otherwise use the curated defaults.
+  const img = await fileToImage(file);
   const steps: Step[] = startMaxEdge || startQuality
     ? [
         {
@@ -110,10 +119,8 @@ export async function compressImage(
     last = encoded;
     if (encoded.length <= targetBytes) return encoded;
   }
-  // Couldn't get under the target — return the smallest attempt anyway;
-  // the backend will reject if it's still too big, with a clearer error
-  // than 'Failed to fetch' (the api wrapper maps 413 to a friendly
-  // message). Most real-world photos will hit the target well before
-  // the last step.
+  // Couldn't get under the target — return the smallest attempt. The backend
+  // limit + api wrapper's 413 fallback produce a clearer downstream error
+  // than 'Failed to fetch'.
   return last;
 }

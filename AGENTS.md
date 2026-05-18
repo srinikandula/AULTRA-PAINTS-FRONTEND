@@ -32,6 +32,7 @@ This is the React + Vite + TypeScript + Tailwind + shadcn web portal for Aultra 
 - Mutations: invalidate the relevant list query in `onSuccess`. Never call `refetch()` from a component manually.
 - Forms: react-hook-form + zod, paired with shadcn `<Form>`. One schema per form, defined adjacent to the component.
 - API errors: thrown by `api()` as `{ status, code?, message }`. Render via `toast.error(e.message)`.
+- Image uploads: file inputs go through `compressImage()` from `@/lib/compress-image` before being sent. Target ceiling is **6 MB** of resulting base64 data URI (~5 MB original photo) to stay under the backend's `8mb` JSON body limit. If you change the target, sync the backend's `bodyParser.json({ limit })` value too.
 
 ## Build, Test, and Development
 - `npm install` (no flags required — `.npmrc` with `legacy-peer-deps` was removed after the Angular cutover).
