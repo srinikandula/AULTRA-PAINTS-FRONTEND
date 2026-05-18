@@ -119,7 +119,7 @@ loadFocusWarehouses() {
 
 loadFocusBranches() {
   this.apiRequestService.getFocusBranches().pipe(takeUntil(this.destroy$)).subscribe(res => {
-    this.focusBranches = res.warehouses || [];
+    this.focusBranches = res.branches || [];
   });
 }
 

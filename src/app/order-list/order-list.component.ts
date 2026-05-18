@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgbPagination, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 import { Unsubscribable } from '../shared/unsubscribable';
+import { StatusLabelPipe } from './status-label.pipe';
 import { Observable, takeUntil } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 
@@ -29,7 +30,7 @@ interface BranchOption {
 @Component({
   selector: 'app-order-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgbPagination, NgbTypeaheadModule],
+  imports: [CommonModule, FormsModule, NgbPagination, NgbTypeaheadModule, StatusLabelPipe],
   templateUrl: './order-list.component.html',
   styleUrl: './order-list.component.css',
 })
@@ -101,7 +102,7 @@ export class OrderListComponent extends Unsubscribable implements OnInit {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response: any) => {
-          this.branches = response?.warehouses || response?.branches || [];
+          this.branches = response?.branches || [];
         },
         error: () => { this.branchesError = 'Could not load branch list'; },
       });

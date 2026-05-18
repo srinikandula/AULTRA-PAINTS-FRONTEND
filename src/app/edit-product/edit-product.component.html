@@ -61,8 +61,8 @@
               class="text-danger">*</span></label>
           <input type="file" id="productOfferImage" class="form-control form-control-lg shadow-sm"
             (change)="handleImageChange($event)" accept="image/*" />
-          <div *ngIf="currentCatlog.productOfferImage || currentCatlog.productOfferImageUrl" class="mt-3">
-            <img [src]="currentCatlog.productOfferImage || currentCatlog.productOfferImageUrl" alt="Product Image"
+          <div *ngIf="currentCatlog.productOfferImageUrl" class="mt-3">
+            <img [src]="currentCatlog.productOfferImageUrl" alt="Product Image"
               class="img-thumbnail shadow-sm" style="max-width: 150px; max-height: 150px; border-radius: 8px;" />
           </div>
           <div *ngIf="submitted && !currentCatlog.productOfferImage && !currentCatlog.productOfferImageUrl"
