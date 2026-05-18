@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Users, ClipboardList, Layers, Tags, Tag,
   ShoppingCart, Ticket, ArrowRightLeft, Receipt, BadgePercent, Gift, Wallet,
-  Database, LayoutGrid, ChevronDown, ChevronRight,
+  Database, LayoutGrid, ChevronDown, ChevronRight, Megaphone,
 } from 'lucide-react';
 
 type NavLeaf = {
@@ -41,6 +41,7 @@ const NAV: NavEntry[] = [
       { kind: 'leaf', to: '/product-offers', label: 'Product Offers',  icon: BadgePercent,  roles: ['SuperUser'] },
       { kind: 'leaf', to: '/product-catalog', label: 'Product Catalog', icon: LayoutGrid,   roles: ['SuperUser'] },
       { kind: 'leaf', to: '/batch-list',     label: 'Batches',         icon: ClipboardList, roles: ['SuperUser'] },
+      { kind: 'leaf', to: '/deals',          label: 'Deals',           icon: Megaphone,     roles: ['SuperUser'] },
     ],
   },
   { kind: 'leaf', to: '/order-list',         label: 'Orders',           icon: ShoppingCart,   roles: ['SuperUser', 'SalesExecutive'] },
