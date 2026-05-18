@@ -1,9 +1,0 @@
-/* Add this to your component's CSS file or global styles */
-.table td, .table th {
-    padding: 12px 15px;  /* Adjust padding for each row and cell */
-}
-
-.table tr {
-    height: 54px;  /* Adjust the row height (optional) */
-}
-

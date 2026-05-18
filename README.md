@@ -1,27 +1,43 @@
-# Mynewapp
+# Aultra Paints — Web Portal
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.5.
+Admin / SuperUser / SalesExecutive interface to the Aultra Paints backend.
 
-## Development server
+## Stack
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+React 18 · Vite 5 · TypeScript 5.5 · Tailwind 3 · shadcn/ui · TanStack Query · Zustand · React Router v6 · react-hook-form + zod · Recharts · sonner · lucide-react.
 
-## Code scaffolding
+## Getting started
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+~~~
+npm install
+npm run dev      # http://localhost:4200
+~~~
 
-## Build
+Set `VITE_API_URL` in a `.env.development` / `.env.production` / `.env.qa` file pointing at the backend (default: `http://localhost:4300/api/`).
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+## Scripts
 
-## Running unit tests
+| Script | What it does |
+|---|---|
+| `npm run dev` | Vite dev server on :4200 |
+| `npm run build` | Production build to `dist/` |
+| `npm run preview` | Serve the `dist/` build locally |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## Layout
 
-## Running end-to-end tests
+~~~
+src/
+├── App.tsx
+├── routes.tsx           # route table + guards
+├── lib/                 # api client, JWT helpers, cn() util
+├── stores/              # zustand stores (auth)
+├── components/
+│   ├── ui/              # shadcn primitives
+│   └── layout/          # AppLayout, Sidebar, Header, ProtectedRoute, RoleGate
+├── features/            # one folder per feature area
+└── types/               # shared types
+~~~
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+See `AGENTS.md` for conventions and `CLAUDE.md` for Claude-Code-specific guidance.
