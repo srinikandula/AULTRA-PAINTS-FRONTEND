@@ -56,11 +56,29 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
 
   // Normalize errors so TanStack Query's onError sees a consistent shape.
   if (!res.ok) {
-    let parsed: { code?: string; message?: string } = {};
-    try {
-      parsed = (await res.json()) as { code?: string; message?: string };
-    } catch {
-      /* non-JSON body */
+    let parsed: { code?: string; message?: string; error?: string } = {};
+    const bodyText = await res.text().catch(() => '');
+    if (bodyText) {
+      try {
+        const json = JSON.parse(bodyText) as Record<string, unknown>;
+        parsed = {
+          code: typeof json.code === 'string' ? json.code : undefined,
+          // Many backend handlers in this codebase return `{message}`, a few
+          // return `{error}`. Prefer message; fall back to error.
+          message:
+            typeof json.message === 'string' ? json.message :
+            typeof json.error === 'string' ? json.error :
+            undefined,
+        };
+      } catch {
+        // Non-JSON body (e.g. Express default error HTML, or a plain text
+        // 'PayloadTooLargeError'). Surface a trimmed snippet rather than
+        // dropping it on the floor.
+        const trimmed = bodyText.trim();
+        if (trimmed && !trimmed.startsWith('<')) {
+          parsed.message = trimmed.slice(0, 200);
+        }
+      }
     }
     if (res.status === 401) {
       useAuthStore.getState().logout();
@@ -72,9 +90,14 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
         window.location.href = '/login';
       }
     }
+    // Friendly fallbacks for common opaque cases.
+    const fallback =
+      res.status === 413 ? 'Image is too large for the server (try a smaller file).' :
+      res.status === 504 || res.status === 0 ? 'Server did not respond. Try again.' :
+      `Request failed (${res.status})`;
     throw new ApiError(
       res.status,
-      parsed.message ?? `Request failed (${res.status})`,
+      parsed.message ?? fallback,
       parsed.code,
     );
   }

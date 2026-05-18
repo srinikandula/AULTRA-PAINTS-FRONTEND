@@ -55,6 +55,7 @@ export function OfferFormDialog({
     cacheBust(offer?.productOfferImageUrl, offer?.updatedAt),
   );
   const hasNewImage = imageDataUri?.startsWith('data:') ?? false;
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<OfferValues>({
     resolver: zodResolver(schema),
@@ -82,9 +83,10 @@ export function OfferFormDialog({
   };
 
   const onSubmit = form.handleSubmit((values) => {
+    setSubmitError(null);
     const isNewImage = imageDataUri?.startsWith('data:') ?? false;
     if (!offer && !isNewImage) {
-      toast.error('Image is required');
+      setSubmitError('Image is required');
       return;
     }
     const mutator = (offer ? update : create) as unknown as {
@@ -122,7 +124,14 @@ export function OfferFormDialog({
         toast.success(offer ? 'Offer updated' : 'Offer created');
         onClose();
       },
-      onError: (e) => toast.error(e.message),
+      onError: (e) => {
+        // Surface inline (persistent) AND in a toast (peripheral), so the
+        // user sees the reason even after the toast fades. The api() wrapper
+        // already extracts {message} or {error} from the backend response
+        // and falls back to a friendly string for 413 / 5xx.
+        setSubmitError(e.message);
+        toast.error(e.message);
+      },
     });
   });
 
@@ -136,6 +145,14 @@ export function OfferFormDialog({
       </DialogHeader>
       <Form {...form}>
         <form className="space-y-4" onSubmit={onSubmit}>
+          {submitError && (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {submitError}
+            </div>
+          )}
           {/* Image is held in local state (not RHF-managed) — render plain
               elements rather than FormItem/FormLabel/FormControl so we don't
               need a FormField context wrapper. */}
