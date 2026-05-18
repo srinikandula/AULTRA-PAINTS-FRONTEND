@@ -7,7 +7,6 @@ import { Login } from '@/features/auth/login';
 import { Register } from '@/features/auth/register';
 import { Dashboard } from '@/features/dashboard/dashboard';
 import { UserList as Users } from '@/features/users/user-list';
-import { UnverifiedUsers } from '@/features/users/unverified-users';
 import { BrandList } from '@/features/brands/brand-list';
 import { ProductList } from '@/features/products/product-list';
 import { CreateProduct } from '@/features/products/create-product';
@@ -44,7 +43,10 @@ export function AppRoutes() {
           {/* SuperUser-only */}
           <Route element={<RoleGate roles={['SuperUser']} />}>
             <Route path="/users" element={<Users />} />
-            <Route path="/unverified-users" element={<UnverifiedUsers />} />
+            {/* Unverified users is now the second tab on the Users screen,
+                but the legacy route is kept so deep links + sidebar back-
+                compat still resolve into the right tab. */}
+            <Route path="/unverified-users" element={<Users />} />
             <Route path="/batch-list" element={<BatchList />} />
             <Route path="/create-batch" element={<CreateBatch />} />
             <Route path="/product-list" element={<ProductList />} />

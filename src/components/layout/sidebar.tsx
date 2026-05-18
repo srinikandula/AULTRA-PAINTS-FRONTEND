@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore, type AccountType } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard, Users, UserX, ClipboardList, Layers, Tags, Tag,
+  LayoutDashboard, Users, ClipboardList, Layers, Tags, Tag,
   ShoppingCart, Ticket, ArrowRightLeft, Receipt, BadgePercent, Gift, Wallet,
   Database, LayoutGrid, ChevronDown, ChevronRight,
 } from 'lucide-react';
@@ -34,16 +34,15 @@ const NAV: NavEntry[] = [
     icon: Database,
     roles: ['SuperUser'],
     children: [
-      { kind: 'leaf', to: '/users',          label: 'Users',           icon: Users,        roles: ['SuperUser'] },
-      { kind: 'leaf', to: '/brand-list',     label: 'Brands',          icon: Tag,          roles: ['SuperUser'] },
-      { kind: 'leaf', to: '/product-list',   label: 'Products',        icon: Layers,       roles: ['SuperUser'] },
-      { kind: 'leaf', to: '/product-offers', label: 'Product Offers',  icon: BadgePercent, roles: ['SuperUser'] },
-      { kind: 'leaf', to: '/product-catalog', label: 'Product Catalog', icon: LayoutGrid,  roles: ['SuperUser'] },
+      { kind: 'leaf', to: '/users',          label: 'Users',           icon: Users,         roles: ['SuperUser'] },
+      { kind: 'leaf', to: '/brand-list',     label: 'Brands',          icon: Tag,           roles: ['SuperUser'] },
+      { kind: 'leaf', to: '/product-category-list', label: 'Categories', icon: Tags,        roles: ['SuperUser'] },
+      { kind: 'leaf', to: '/product-list',   label: 'Products',        icon: Layers,        roles: ['SuperUser'] },
+      { kind: 'leaf', to: '/product-offers', label: 'Product Offers',  icon: BadgePercent,  roles: ['SuperUser'] },
+      { kind: 'leaf', to: '/product-catalog', label: 'Product Catalog', icon: LayoutGrid,   roles: ['SuperUser'] },
+      { kind: 'leaf', to: '/batch-list',     label: 'Batches',         icon: ClipboardList, roles: ['SuperUser'] },
     ],
   },
-  { kind: 'leaf', to: '/unverified-users',   label: 'Unverified Users', icon: UserX,          roles: ['SuperUser'] },
-  { kind: 'leaf', to: '/batch-list',         label: 'Batches',          icon: ClipboardList,  roles: ['SuperUser'] },
-  { kind: 'leaf', to: '/product-category-list', label: 'Categories',    icon: Tags,           roles: ['SuperUser'] },
   { kind: 'leaf', to: '/order-list',         label: 'Orders',           icon: ShoppingCart,   roles: ['SuperUser', 'SalesExecutive'] },
   { kind: 'leaf', to: '/transactions',       label: 'Transactions',     icon: Ticket,         roles: ['SuperUser'] },
   { kind: 'leaf', to: '/transaction-ledger', label: 'Ledger',           icon: ArrowRightLeft, roles: ['SuperUser'] },
