@@ -48,11 +48,26 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
         path.replace(/^\//, ''),
         env.apiUrl.endsWith('/') ? env.apiUrl : env.apiUrl + '/',
       ).toString();
-  const res = await fetch(url, {
-    ...init,
-    headers: buildHeaders(init),
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers: buildHeaders(init),
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    });
+  } catch (err) {
+    // fetch() rejects (TypeError 'Failed to fetch') for: network drop, DNS,
+    // CORS preflight failure, request body too large for the server (some
+    // proxies close the connection before responding). Surface a useful
+    // hint instead of the raw browser string.
+    const raw = err instanceof Error ? err.message : 'Network request failed';
+    throw new ApiError(
+      0,
+      raw === 'Failed to fetch'
+        ? 'Could not reach the server. The request may be too large, the network may be down, or CORS is blocking it.'
+        : raw,
+    );
+  }
 
   // Normalize errors so TanStack Query's onError sees a consistent shape.
   if (!res.ok) {
