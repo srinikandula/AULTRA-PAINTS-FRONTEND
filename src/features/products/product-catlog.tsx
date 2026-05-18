@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useAuthStore } from '@/stores/auth-store';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProductCatalog, useUpdateCatalog, useDeleteCatalog } from './hooks';
 import type { CatalogItem } from './hooks';
 
@@ -47,6 +48,7 @@ export function ProductCatalog() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [searchKey, setSearchKey] = useState('');
+  const [deleting, setDeleting] = useState<CatalogItem | null>(null);
 
   const query = useProductCatalog({ page, limit: PAGE_SIZE, searchKey });
   const update = useUpdateCatalog();
@@ -81,12 +83,15 @@ export function ProductCatalog() {
     );
   };
 
-  const onDelete = (item: CatalogItem) => {
-    if (!window.confirm(`Delete product "${item.productOfferDescription}"? This cannot be undone.`)) return;
+  const confirmDelete = () => {
+    if (!deleting) return;
     remove.mutate(
-      { _id: item._id },
+      { _id: deleting._id },
       {
-        onSuccess: () => toast.success('Product deleted'),
+        onSuccess: () => {
+          toast.success('Product deleted');
+          setDeleting(null);
+        },
         onError: (e) => toast.error(e.message),
       },
     );
@@ -195,7 +200,7 @@ export function ProductCatalog() {
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7"
-                        onClick={() => onDelete(item)}
+                        onClick={() => setDeleting(item)}
                         aria-label="Delete product"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -258,6 +263,25 @@ export function ProductCatalog() {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title="Delete product?"
+        description={
+          deleting && (
+            <>
+              <strong className="font-medium text-foreground">
+                {deleting.productOfferDescription}
+              </strong>{' '}
+              will be permanently removed from the catalog. This cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        loading={remove.isPending}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

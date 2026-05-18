@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Dialog, DialogTrigger,
 } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import {
   useProductOffers, useUpdateProductOffer, useDeleteProductOffer,
 } from './hooks';
@@ -47,6 +48,7 @@ export function ProductOffers() {
   const [searchKey, setSearchKey] = useState('');
   const [editing, setEditing] = useState<ProductOffer | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<ProductOffer | null>(null);
 
   const query = useProductOffers({
     page,
@@ -79,12 +81,15 @@ export function ProductOffers() {
     );
   };
 
-  const onDelete = (offer: ProductOffer) => {
-    if (!window.confirm(`Delete offer "${offer.productOfferDescription}"? This cannot be undone.`)) return;
+  const confirmDelete = () => {
+    if (!deleting) return;
     remove.mutate(
-      { _id: offer._id },
+      { _id: deleting._id },
       {
-        onSuccess: () => toast.success('Offer deleted'),
+        onSuccess: () => {
+          toast.success('Offer deleted');
+          setDeleting(null);
+        },
         onError: (e) => toast.error(e.message),
       },
     );
@@ -180,7 +185,7 @@ export function ProductOffers() {
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7"
-                      onClick={() => onDelete(o)}
+                      onClick={() => setDeleting(o)}
                       aria-label="Delete offer"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -245,6 +250,25 @@ export function ProductOffers() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         {editing && <OfferFormDialog offer={editing} onClose={() => setEditing(null)} />}
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title="Delete offer?"
+        description={
+          deleting && (
+            <>
+              <strong className="font-medium text-foreground">
+                {deleting.productOfferDescription}
+              </strong>{' '}
+              will be permanently removed. This cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        loading={remove.isPending}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

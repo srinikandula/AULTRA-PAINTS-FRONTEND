@@ -16,6 +16,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useUsers, useToggleUserStatus, useDeleteUser } from './hooks';
 import { UserFormDialog } from './user-form-dialog';
 import type { User, UserAccountType } from '@/types/user';
@@ -35,6 +36,7 @@ export function UsersPanel() {
   const [accountType, setAccountType] = useState<UserAccountType | undefined>(undefined);
   const [editing, setEditing] = useState<User | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<User | null>(null);
 
   const { data, isLoading, isError, error } = useUsers({
     page,
@@ -146,16 +148,7 @@ export function UsersPanel() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          if (!window.confirm(`Delete user ${u.mobile}?`)) return;
-                          remove.mutate(
-                            { _id: u._id },
-                            {
-                              onSuccess: () => toast.success('User deleted'),
-                              onError: (e) => toast.error(e.message),
-                            },
-                          );
-                        }}
+                        onClick={() => setDeleting(u)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -202,6 +195,38 @@ export function UsersPanel() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         {editing && <UserFormDialog user={editing} onClose={() => setEditing(null)} />}
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title="Delete user?"
+        description={
+          deleting && (
+            <>
+              User{' '}
+              <strong className="font-medium text-foreground">
+                {deleting.name || deleting.mobile}
+              </strong>{' '}
+              (mobile {deleting.mobile}) will be permanently removed. This cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        loading={remove.isPending}
+        onConfirm={() => {
+          if (!deleting) return;
+          remove.mutate(
+            { _id: deleting._id },
+            {
+              onSuccess: () => {
+                toast.success('User deleted');
+                setDeleting(null);
+              },
+              onError: (e) => toast.error(e.message),
+            },
+          );
+        }}
+      />
     </>
   );
 }
