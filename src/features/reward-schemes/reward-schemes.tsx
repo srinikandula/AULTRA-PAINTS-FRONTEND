@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Dialog, DialogTrigger,
 } from '@/components/ui/dialog';
+import { cacheBust } from '@/lib/cache-bust';
 import {
   useRewardSchemes, useUpdateRewardScheme, useDeleteRewardScheme,
 } from './hooks';
@@ -87,7 +88,7 @@ export function RewardSchemes() {
               <div className="relative">
                 {s.rewardSchemeImageUrl ? (
                   <img
-                    src={s.rewardSchemeImageUrl}
+                    src={cacheBust(s.rewardSchemeImageUrl, s.updatedAt) ?? undefined}
                     alt="Reward scheme"
                     className="h-48 w-full object-cover"
                   />

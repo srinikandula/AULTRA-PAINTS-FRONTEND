@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/form';
 import { useCreateRewardScheme, useUpdateRewardScheme } from './hooks';
 import { compressImage } from '@/lib/compress-image';
+import { cacheBust } from '@/lib/cache-bust';
 import type { RewardScheme } from '@/types/reward-scheme';
 
 const schema = z.object({
@@ -32,7 +33,7 @@ export function SchemeFormDialog({
   const update = useUpdateRewardScheme();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [imageDataUri, setImageDataUri] = useState<string | null>(
-    scheme?.rewardSchemeImageUrl ?? null,
+    cacheBust(scheme?.rewardSchemeImageUrl, scheme?.updatedAt),
   );
   const hasNewImage = imageDataUri?.startsWith('data:') ?? false;
 
@@ -134,7 +135,7 @@ export function SchemeFormDialog({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setImageDataUri(scheme.rewardSchemeImageUrl ?? null);
+                        setImageDataUri(cacheBust(scheme.rewardSchemeImageUrl, scheme.updatedAt));
                         if (fileInputRef.current) fileInputRef.current.value = '';
                       }}
                     >

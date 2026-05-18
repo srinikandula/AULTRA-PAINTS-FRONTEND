@@ -10,6 +10,7 @@ import {
   Dialog, DialogTrigger,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { cacheBust } from '@/lib/cache-bust';
 import {
   useProductOffers, useUpdateProductOffer, useDeleteProductOffer,
 } from './hooks';
@@ -156,7 +157,7 @@ export function ProductOffers() {
                 <div className="relative">
                   {o.productOfferImageUrl ? (
                     <img
-                      src={o.productOfferImageUrl}
+                      src={cacheBust(o.productOfferImageUrl, o.updatedAt) ?? undefined}
                       alt={o.productOfferDescription}
                       className="h-48 w-full object-cover"
                     />

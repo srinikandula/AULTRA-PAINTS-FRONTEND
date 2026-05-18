@@ -23,6 +23,7 @@ import {
   useCreateCatalog, useUpdateCatalog, useFocusProducts,
 } from './hooks';
 import { compressImage } from '@/lib/compress-image';
+import { cacheBust } from '@/lib/cache-bust';
 import type { CatalogItem } from './hooks';
 
 const NONE = '__none__';
@@ -100,7 +101,7 @@ export function CatalogForm({ initial }: CatalogFormProps) {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [imageDataUri, setImageDataUri] = useState<string | null>(
-    initial?.productOfferImageUrl ?? null,
+    cacheBust(initial?.productOfferImageUrl, initial?.updatedAt),
   );
   const hasNewImage = imageDataUri?.startsWith('data:') ?? false;
 
@@ -237,7 +238,7 @@ export function CatalogForm({ initial }: CatalogFormProps) {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setImageDataUri(initial.productOfferImageUrl ?? null);
+                          setImageDataUri(cacheBust(initial.productOfferImageUrl, initial.updatedAt));
                           if (fileInputRef.current) fileInputRef.current.value = '';
                         }}
                       >

@@ -56,6 +56,11 @@ export type CatalogItem = {
   }>;
   brandId?: string;
   BrandNameStr?: string;
+  // Mongoose timestamp — used by the catalog card grid to bust the image
+  // cache after an update (S3 URL stays the same because the key is the
+  // document id).
+  updatedAt?: string;
+  createdAt?: string;
 };
 
 function toProductFromBrandRow(raw: ProductsListEnvelope['products'][number]): Product {

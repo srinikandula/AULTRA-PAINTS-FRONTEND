@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useAuthStore } from '@/stores/auth-store';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { cacheBust } from '@/lib/cache-bust';
 import { useProductCatalog, useUpdateCatalog, useDeleteCatalog } from './hooks';
 import type { CatalogItem } from './hooks';
 
@@ -168,7 +169,7 @@ export function ProductCatalog() {
                 <div className="relative">
                   {item.productOfferImageUrl ? (
                     <img
-                      src={item.productOfferImageUrl}
+                      src={cacheBust(item.productOfferImageUrl, item.updatedAt) ?? undefined}
                       alt={item.productOfferDescription}
                       className="h-48 w-full object-cover"
                     />

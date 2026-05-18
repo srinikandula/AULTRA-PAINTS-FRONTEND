@@ -19,6 +19,7 @@ import {
 import { useCreateProductOffer, useUpdateProductOffer } from './hooks';
 import { useProductCategories } from '@/features/products/product-categories-hooks';
 import { compressImage } from '@/lib/compress-image';
+import { cacheBust } from '@/lib/cache-bust';
 import type { ProductOffer } from '@/types/product-offer';
 
 const NONE = '__none__';
@@ -51,7 +52,7 @@ export function OfferFormDialog({
   const categoriesQuery = useProductCategories();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [imageDataUri, setImageDataUri] = useState<string | null>(
-    offer?.productOfferImageUrl ?? null,
+    cacheBust(offer?.productOfferImageUrl, offer?.updatedAt),
   );
   const hasNewImage = imageDataUri?.startsWith('data:') ?? false;
 
@@ -172,7 +173,7 @@ export function OfferFormDialog({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setImageDataUri(offer.productOfferImageUrl ?? null);
+                        setImageDataUri(cacheBust(offer.productOfferImageUrl, offer.updatedAt));
                         if (fileInputRef.current) fileInputRef.current.value = '';
                       }}
                     >
