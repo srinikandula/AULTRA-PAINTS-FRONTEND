@@ -175,7 +175,7 @@ export function ProductOffers() {
                   >
                     <Button
                       size="icon"
-                      variant="ghost"
+                      variant="editIcon"
                       className="h-7 w-7"
                       onClick={() => setEditing(o)}
                       aria-label="Edit offer"
@@ -184,7 +184,7 @@ export function ProductOffers() {
                     </Button>
                     <Button
                       size="icon"
-                      variant="ghost"
+                      variant="destructiveIcon"
                       className="h-7 w-7"
                       onClick={() => setDeleting(o)}
                       aria-label="Delete offer"

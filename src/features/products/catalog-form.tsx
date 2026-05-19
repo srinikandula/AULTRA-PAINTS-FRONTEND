@@ -434,7 +434,7 @@ export function CatalogForm({ initial }: CatalogFormProps) {
                           <Button
                             type="button"
                             size="sm"
-                            variant="ghost"
+                            variant="destructiveIcon"
                             disabled={rows.fields.length <= 1}
                             onClick={() => rows.remove(idx)}
                             aria-label="Delete row"

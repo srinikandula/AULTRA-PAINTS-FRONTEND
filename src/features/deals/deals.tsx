@@ -171,7 +171,7 @@ export function Deals() {
                   >
                     <Button
                       size="icon"
-                      variant="ghost"
+                      variant="editIcon"
                       className="h-7 w-7"
                       onClick={() => setEditing(d)}
                       aria-label="Edit deal"
@@ -180,7 +180,7 @@ export function Deals() {
                     </Button>
                     <Button
                       size="icon"
-                      variant="ghost"
+                      variant="destructiveIcon"
                       className="h-7 w-7"
                       onClick={() => setDeleting(d)}
                       aria-label="Delete deal"

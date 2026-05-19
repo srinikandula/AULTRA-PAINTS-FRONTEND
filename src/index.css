@@ -10,7 +10,7 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 212 36% 24%;             /* #2C3E50 */
+    --primary: 221 83% 53%;             /* #2563eb (blue-600) — brand action color */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
@@ -22,12 +22,12 @@
     --destructive-foreground: 0 0% 100%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 212 36% 24%;
+    --ring: 221 83% 53%;                /* matches --primary so focus rings stay on-brand */
     --radius: 0.5rem;
     --sidebar: 210 7% 33%;              /* #495057 */
     --sidebar-foreground: 0 0% 100%;
     --sidebar-hover: 210 23% 14%;       /* #19232c */
-    --sidebar-accent: 212 36% 24%;      /* #2C3E50 — same as primary */
+    --sidebar-accent: 212 36% 24%;      /* #2C3E50 — sidebar stays slate, separate from --primary */
   }
 
   * {
