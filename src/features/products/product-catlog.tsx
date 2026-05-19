@@ -189,7 +189,7 @@ export function ProductCatalog() {
                       <Button
                         asChild
                         size="icon"
-                        variant="ghost"
+                        variant="editIcon"
                         className="h-7 w-7"
                         aria-label="Edit product"
                       >
@@ -199,7 +199,7 @@ export function ProductCatalog() {
                       </Button>
                       <Button
                         size="icon"
-                        variant="ghost"
+                        variant="destructiveIcon"
                         className="h-7 w-7"
                         onClick={() => setDeleting(item)}
                         aria-label="Delete product"
