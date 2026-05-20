@@ -316,6 +316,7 @@ export function UserFormDialog({ user, onClose }: UserFormDialogProps) {
                         className="w-[--radix-popover-trigger-width] p-1"
                         align="start"
                       >
+                        <div className="max-h-60 overflow-y-auto">
                         {categories.length === 0 ? (
                           <p className="px-2 py-1.5 text-xs text-muted-foreground">No categories</p>
                         ) : (
@@ -339,6 +340,7 @@ export function UserFormDialog({ user, onClose }: UserFormDialogProps) {
                             );
                           })
                         )}
+                        </div>
                       </PopoverContent>
                     </Popover>
                     <FormMessage className="text-xs" />
