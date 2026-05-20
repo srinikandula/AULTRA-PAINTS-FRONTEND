@@ -48,7 +48,7 @@ export function useTransactions(params: Params) {
 type LedgerParams = {
   page: number;
   limit: number;
-  transactionType?: 'points' | 'cash';
+  creditNoteStatus?: 'pending' | 'issued';
   couponCode?: string;
   date?: string;
 };

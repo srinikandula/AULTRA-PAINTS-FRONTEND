@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { isTokenExpired } from '@/lib/auth';
 
-export type AccountType = 'SuperUser' | 'SalesExecutive' | 'Dealer' | 'Painter';
+export type AccountType = 'SuperUser' | 'SalesExecutive' | 'Dealer' | 'Painter' | 'ProductionManager';
 
 type LoginInput = { token: string; accountType: AccountType; userId: string };
 

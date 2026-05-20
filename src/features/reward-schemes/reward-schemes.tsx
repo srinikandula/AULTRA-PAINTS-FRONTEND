@@ -103,7 +103,7 @@ export function RewardSchemes() {
                 <div className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-background/90 p-1 shadow-sm">
                   <Button
                     size="icon"
-                    variant="ghost"
+                    variant="editIcon"
                     className="h-7 w-7"
                     onClick={() => setEditing(s)}
                     aria-label="Edit scheme"
@@ -112,7 +112,7 @@ export function RewardSchemes() {
                   </Button>
                   <Button
                     size="icon"
-                    variant="ghost"
+                    variant="destructiveIcon"
                     className="h-7 w-7"
                     onClick={() => onDelete(s)}
                     aria-label="Delete scheme"

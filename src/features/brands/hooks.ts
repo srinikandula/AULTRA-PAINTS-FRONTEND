@@ -5,10 +5,10 @@ import type { Brand } from '@/types/brand';
 // Backend Brand document only has `{ _id, name }`. The frontend UI keeps the
 // `brandName` label (and optional `description`) for continuity — we adapt at
 // the hook boundary so callers don't need to know about the backend field.
-type BackendBrand = { _id: string; name: string };
+type BackendBrand = { _id: string; name: string; description?: string };
 
 function toBrand(raw: BackendBrand): Brand {
-  return { _id: raw._id, brandName: raw.name };
+  return { _id: raw._id, brandName: raw.name, description: raw.description ?? '' };
 }
 
 export function useBrands() {
@@ -24,10 +24,10 @@ export function useBrands() {
 export function useCreateBrand() {
   const qc = useQueryClient();
   return useMutation<Brand, Error, { brandName: string; description?: string }>({
-    mutationFn: async ({ brandName }) => {
+    mutationFn: async ({ brandName, description }) => {
       const raw = await api<BackendBrand>('brands', {
         method: 'POST',
-        body: { name: brandName },
+        body: { name: brandName, description: description ?? '' },
       });
       return toBrand(raw);
     },
@@ -38,10 +38,10 @@ export function useCreateBrand() {
 export function useUpdateBrand() {
   const qc = useQueryClient();
   return useMutation<Brand, Error, { _id: string; brandName: string; description?: string }>({
-    mutationFn: async ({ _id, brandName }) => {
+    mutationFn: async ({ _id, brandName, description }) => {
       const raw = await api<BackendBrand>(`brands/${_id}`, {
         method: 'PUT',
-        body: { name: brandName },
+        body: { name: brandName, description: description ?? '' },
       });
       return toBrand(raw);
     },

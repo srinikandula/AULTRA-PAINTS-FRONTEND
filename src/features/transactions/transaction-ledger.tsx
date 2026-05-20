@@ -12,11 +12,11 @@ import {
 import { useLedger, ledgerPdfUrl } from './hooks';
 
 const ALL = '__all__';
-type TxType = 'points' | 'cash';
+type CreditNoteStatus = 'pending' | 'issued';
 
 export function TransactionLedger() {
   const [page, setPage] = useState(1);
-  const [transactionType, setTransactionType] = useState<TxType | undefined>(undefined);
+  const [creditNoteStatus, setCreditNoteStatus] = useState<CreditNoteStatus | undefined>(undefined);
   const [couponCode, setCouponCode] = useState('');
   const [date, setDate] = useState('');
   const limit = 20;
@@ -24,7 +24,7 @@ export function TransactionLedger() {
   const { data, isLoading, isError, error } = useLedger({
     page,
     limit,
-    transactionType,
+    creditNoteStatus,
     couponCode: couponCode || undefined,
     date: date || undefined,
   });
@@ -39,17 +39,17 @@ export function TransactionLedger() {
         <CardHeader>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Select
-              value={transactionType ?? ALL}
+              value={creditNoteStatus ?? ALL}
               onValueChange={(v) => {
-                setTransactionType(v === ALL ? undefined : (v as TxType));
+                setCreditNoteStatus(v === ALL ? undefined : (v as CreditNoteStatus));
                 setPage(1);
               }}
             >
-              <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Credit note status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>All</SelectItem>
-                <SelectItem value="points">Points</SelectItem>
-                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="issued">Issued</SelectItem>
               </SelectContent>
             </Select>
 

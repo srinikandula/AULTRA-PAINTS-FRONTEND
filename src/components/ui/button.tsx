@@ -18,6 +18,12 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
+        // Coloured ghosts for action clusters (edit pencil / delete trash on
+        // cards + table rows). Subtle tint at rest, brighter on hover.
+        editIcon:
+          "text-blue-600 hover:bg-blue-100 hover:text-blue-700",
+        destructiveIcon:
+          "text-red-600 hover:bg-red-100 hover:text-red-700",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -11,21 +11,28 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import {
   useOrders,
   useDealers,
   useOrderDetails,
   useRetryFocusSync,
   useSalesExecutives,
+  useFocusBranches,
+  useUpdateOrderStatusManual,
 } from './hooks';
+import { useAuthStore } from '@/stores/auth-store';
 import type { FocusSyncStatus, Order, OrderStatus } from '@/types/order';
 
 const STATUS_OPTIONS: OrderStatus[] = [
-  'PENDING', 'VERIFIED', 'REJECTED', 'DISPATCHED', 'IN-PARCEL',
+  'PENDING', 'VERIFIED', 'REJECTED', 'DISPATCHED', 'PARTIALLY_DISPATCHED', 'MANUALLY_DISPATCHED',
 ];
 
 const ALL = '__all__';
-// 8 cells per row: chevron + Order # + Dealer + Items + Total + Status + Focus + Created.
-const COLUMN_COUNT = 8;
+// 9 cells per row: chevron + Order # + Dealer + Items + Total + Status + Focus + Created + Actions.
+const COLUMN_COUNT = 9;
 
 // Tailwind colored pill matching the Angular legend.
 const STATUS_STYLES: Record<OrderStatus, string> = {
@@ -33,7 +40,8 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
   'VERIFIED': 'bg-blue-100 text-blue-800 border-blue-200',
   'REJECTED': 'bg-red-100 text-red-800 border-red-200',
   'DISPATCHED': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  'IN-PARCEL': 'bg-violet-100 text-violet-800 border-violet-200',
+  'PARTIALLY_DISPATCHED': 'bg-violet-100 text-violet-800 border-violet-200',
+  'MANUALLY_DISPATCHED': 'bg-teal-100 text-teal-800 border-teal-200',
 };
 
 function StatusBadge({ status }: { status: OrderStatus }) {
@@ -82,25 +90,47 @@ export function OrderList() {
   // Backend filters dealers by code, not by _id.
   const [dealerCode, setDealerCode] = useState<string | undefined>(undefined);
   const [salesExecutiveMobile, setSalesExecutiveMobile] = useState<string | undefined>(undefined);
+  const [branchId, setBranchId] = useState<number | undefined>(undefined);
   const [expandedOrderId, setExpandedOrderId] = useState<string | undefined>(undefined);
   const limit = 20;
 
+  const accountType = useAuthStore((s) => s.accountType);
+  const canFilterByBranch = accountType === 'SuperUser' || accountType === 'ProductionManager';
+  const canManualDispatch = accountType === 'SuperUser' || accountType === 'ProductionManager';
+
+  // Manual dispatch dialog state (lifted to row level)
+  const manualDispatch = useUpdateOrderStatusManual();
+  const [manualDispatchOrderId, setManualDispatchOrderId] = useState<string | undefined>(undefined);
+  const [showManualDialog, setShowManualDialog] = useState(false);
+  const [manualRemarks, setManualRemarks] = useState('');
+  const [remarksError, setRemarksError] = useState('');
+
+  function openManualDialog(orderId: string) {
+    setManualDispatchOrderId(orderId);
+    setManualRemarks('');
+    setRemarksError('');
+    setShowManualDialog(true);
+  }
+
   const dealers = useDealers();
   const salesExecutives = useSalesExecutives();
+  const branches = useFocusBranches();
   const { data, isLoading, isError, error } = useOrders({
     page,
     limit,
     status,
     dealerCode,
     salesExecutiveMobile,
+    branchId,
   });
 
-  const filtersActive = !!status || !!dealerCode || !!salesExecutiveMobile;
+  const filtersActive = !!status || !!dealerCode || !!salesExecutiveMobile || !!branchId;
 
   function clearFilters() {
     setStatus(undefined);
     setDealerCode(undefined);
     setSalesExecutiveMobile(undefined);
+    setBranchId(undefined);
     setPage(1);
   }
 
@@ -172,14 +202,41 @@ export function OrderList() {
               </SelectContent>
             </Select>
 
-            <div className="flex items-center">
-              {filtersActive && (
-                <Button variant="outline" size="sm" onClick={clearFilters}>
-                  Clear filters
-                </Button>
-              )}
-            </div>
+            {canFilterByBranch ? (
+              <Select
+                value={branchId !== undefined ? String(branchId) : ALL}
+                onValueChange={(v) => {
+                  setBranchId(v === ALL ? undefined : Number(v));
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All branches</SelectItem>
+                  {branches.data?.map((b) => (
+                    <SelectItem key={b.iMasterId} value={String(b.iMasterId)}>
+                      {b.sName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex items-center">
+                {filtersActive && (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
+          {canFilterByBranch && filtersActive && (
+            <div className="mt-2">
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {isError && (
@@ -202,6 +259,7 @@ export function OrderList() {
                     <TableHead>Status</TableHead>
                     <TableHead>Focus</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -230,6 +288,17 @@ export function OrderList() {
                           <TableCell><StatusBadge status={o.status} /></TableCell>
                           <TableCell><FocusSyncBadge status={o.focusSyncStatus} /></TableCell>
                           <TableCell>{new Date(o.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                            {canManualDispatch && (
+                              <button
+                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                title="Mark as manually dispatched"
+                                onClick={() => openManualDialog(o.orderId ?? o.orderNumber ?? o._id)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </TableCell>
                         </TableRow>
                         {isExpanded && (
                           <TableRow>
@@ -265,6 +334,71 @@ export function OrderList() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showManualDialog} onOpenChange={(open) => { if (!open) setShowManualDialog(false); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Manual dispatch</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Status</label>
+              <Select value="MANUALLY_DISPATCHED" onValueChange={() => {}}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MANUALLY_DISPATCHED">Manually Dispatched</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">
+                Remarks <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                placeholder="Enter DC Invoice ID or remarks"
+                value={manualRemarks}
+                onChange={(e) => {
+                  setManualRemarks(e.target.value);
+                  if (e.target.value.trim()) setRemarksError('');
+                }}
+                rows={2}
+                className={remarksError ? 'border-destructive focus-visible:ring-destructive' : ''}
+              />
+              {remarksError && <p className="text-xs text-destructive">{remarksError}</p>}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowManualDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={manualDispatch.isPending}
+              onClick={() => {
+                if (!manualRemarks.trim()) {
+                  setRemarksError('Remarks is required');
+                  return;
+                }
+                manualDispatch.mutate(
+                  {
+                    orderId: manualDispatchOrderId!,
+                    status: 'MANUALLY_DISPATCHED',
+                    remarks: manualRemarks.trim(),
+                  },
+                  {
+                    onSuccess: (res) => {
+                      toast.success(res?.message ?? 'Status updated');
+                      setShowManualDialog(false);
+                    },
+                    onError: (e) => toast.error(e.message),
+                  },
+                );
+              }}
+            >
+              {manualDispatch.isPending ? 'Saving...' : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -378,17 +512,36 @@ function OrderDetailPanel({ orderId }: { orderId: string }) {
 
       <section>
         <h4 className="text-sm font-semibold mb-2">Order details</h4>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>Dealer: {dealerName(o)}</div>
-          <div>
-            Placed by: {placedByName}
-            {placedByType}
+        <div className="flex gap-4 text-sm">
+          <div className="flex-1 space-y-1">
+            <div>Dealer: {dealerName(o)}</div>
+            {o.narration ? <div>Narration: {o.narration}</div> : null}
           </div>
-          {o.narration ? (
-            <div className="col-span-2">Narration: {o.narration}</div>
-          ) : null}
+          <div className="flex-1 space-y-1">
+            <div>Placed by: {placedByName}{placedByType}</div>
+            {o.branchName ? <div>Branch: {o.branchName}</div> : null}
+          </div>
         </div>
       </section>
+
+      {o.statusHistory && o.statusHistory.length > 0 && (
+        <section>
+          <h4 className="text-sm font-semibold mb-2">Status history</h4>
+          <div className="space-y-1">
+            {o.statusHistory.map((h, i) => (
+              <div key={i} className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
+                <StatusBadge status={h.status as OrderStatus} />
+                <span>{new Date(h.changedAt).toLocaleString()}</span>
+                {h.changedBy?.name && (
+                  <span>by {h.changedBy.name}{h.changedBy.accountType ? ` (${h.changedBy.accountType})` : ''}</span>
+                )}
+                {h.remarks && <span className="italic">— {h.remarks}</span>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
     </div>
   );
 }

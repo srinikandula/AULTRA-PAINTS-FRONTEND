@@ -1,6 +1,36 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth-store';
+import { env } from '@/env';
 import type { Paginated, User } from '@/types/user';
+
+async function downloadExport(
+  path: string,
+  options: { method?: string; body?: unknown; filename: string },
+) {
+  const token = useAuthStore.getState().token;
+  const base = env.apiUrl.endsWith('/') ? env.apiUrl : env.apiUrl + '/';
+  const url = new URL(path.replace(/^\//, ''), base).toString();
+  const res = await fetch(url, {
+    method: options.method ?? 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/csv',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+  });
+  if (!res.ok) throw new Error(`Export failed (${res.status})`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = options.filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
+}
 
 type ListParams = { page: number; limit: number; searchKey?: string; accountType?: string };
 
@@ -81,6 +111,38 @@ export function useDeleteUser() {
     mutationFn: ({ _id }) =>
       api<{ message: string }>(`users/${_id}`, { method: 'DELETE' }),
     onSuccess: () => invalidateUserLists(qc),
+  });
+}
+
+export type SalesExecutive = { id: string; name: string; mobile: string };
+
+export function useSalesExecutives() {
+  return useQuery<SalesExecutive[]>({
+    queryKey: ['users', 'sales-executives'],
+    queryFn: async () => {
+      const env = await api<{ data: SalesExecutive[] }>('users/sales-executives');
+      return env.data;
+    },
+  });
+}
+
+export function useExportUsers() {
+  return useMutation<void, Error, { searchQuery?: string; accountType?: string }>({
+    mutationFn: ({ searchQuery, accountType } = {}) =>
+      downloadExport('users/export', {
+        method: 'POST',
+        body: { searchQuery, accountType },
+        filename: `Users_${new Date().toLocaleDateString().replaceAll('/', '-')}.csv`,
+      }),
+  });
+}
+
+export function useExportUnverifiedUsers() {
+  return useMutation<void, Error, void>({
+    mutationFn: () =>
+      downloadExport('users/export-unverified', {
+        filename: `Unverified_Users_${new Date().toLocaleDateString().replaceAll('/', '-')}.csv`,
+      }),
   });
 }
 

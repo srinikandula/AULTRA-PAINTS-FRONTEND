@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAuthStore } from '@/stores/auth-store';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { cacheBust } from '@/lib/cache-bust';
-import { useProductCatalog, useUpdateCatalog, useDeleteCatalog } from './hooks';
+import { useProductCatalog, useUpdateCatalog, useDeleteCatalog, useSyncAllProductPrices } from './hooks';
 import type { CatalogItem } from './hooks';
 
 // TODO: cart + checkout for Dealers (Add-to-Cart modal with volume button group,
@@ -46,6 +46,7 @@ function categoryIdOf(c: CatalogItem['productCategory']): string | null {
 export function ProductCatalog() {
   const accountType = useAuthStore((s) => s.accountType);
   const isDealer = accountType === 'Dealer';
+  const canManageProducts = accountType === 'SuperUser' || accountType === 'ProductionManager';
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [searchKey, setSearchKey] = useState('');
@@ -54,34 +55,40 @@ export function ProductCatalog() {
   const query = useProductCatalog({ page, limit: PAGE_SIZE, searchKey });
   const update = useUpdateCatalog();
   const remove = useDeleteCatalog();
+  const syncAll = useSyncAllProductPrices();
 
   const items = query.data?.data ?? [];
   const totalPages = query.data?.pagination.totalPages ?? 1;
 
   const onToggleStatus = (item: CatalogItem, nextActive: boolean) => {
-    // Reuse existing price rows so the backend's `No valid price entries`
-    // guard does not fire on a status toggle.
-    const priceMap: Record<string, Array<Record<string, number>>> = {};
-    (item.price ?? []).forEach((row) => {
-      if (!priceMap[row.volume]) priceMap[row.volume] = [];
-      priceMap[row.volume].push({ [row.refId]: row.price });
-    });
     update.mutate(
       {
         _id: item._id,
         productDescription: item.productOfferDescription,
         productStatus: nextActive ? 'Active' : 'Inactive',
         productCategory: categoryIdOf(item.productCategory),
-        focusProductId: String(item.focusProductId ?? ''),
-        focusUnitId: 1,
+        // null → backend skips price re-seed
         focusProductMapping: null,
-        price: JSON.stringify(priceMap),
       },
       {
         onSuccess: () => toast.success('Status updated'),
         onError: (e) => toast.error(e.message),
       },
     );
+  };
+
+  const onSyncAll = () => {
+    syncAll.mutate(undefined, {
+      onSuccess: (data) => {
+        const msg = `Synced ${data.synced} product${data.synced !== 1 ? 's' : ''}` +
+          (data.skipped > 0 ? `, skipped ${data.skipped}` : '');
+        toast.success(msg);
+        if (data.errors.length > 0) {
+          toast.warning(data.errors.slice(0, 3).join('\n'));
+        }
+      },
+      onError: (e) => toast.error(e.message),
+    });
   };
 
   const confirmDelete = () => {
@@ -100,7 +107,7 @@ export function ProductCatalog() {
 
   const openEdit = (item: CatalogItem) => {
     if (isDealer) return;
-    navigate(`/edit-product/${item._id}`, { state: { catalog: item } });
+    navigate(`/edit-catalog/${item._id}`, { state: { catalog: item } });
   };
 
   return (
@@ -117,9 +124,19 @@ export function ProductCatalog() {
               className="w-56 pl-8"
             />
           </div>
+          {canManageProducts && (
+            <Button
+              variant="outline"
+              disabled={syncAll.isPending}
+              onClick={onSyncAll}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4${syncAll.isPending ? ' animate-spin' : ''}`} />
+              {syncAll.isPending ? 'Syncing...' : 'Sync all prices'}
+            </Button>
+          )}
           {!isDealer && (
             <Button asChild>
-              <Link to="/create-product">
+              <Link to="/create-catalog">
                 <Plus className="mr-2 h-4 w-4" /> Add product
               </Link>
             </Button>
@@ -189,17 +206,17 @@ export function ProductCatalog() {
                       <Button
                         asChild
                         size="icon"
-                        variant="ghost"
+                        variant="editIcon"
                         className="h-7 w-7"
                         aria-label="Edit product"
                       >
-                        <Link to={`/edit-product/${item._id}`} state={{ catalog: item }}>
+                        <Link to={`/edit-catalog/${item._id}`} state={{ catalog: item }}>
                           <Pencil className="h-4 w-4" />
                         </Link>
                       </Button>
                       <Button
                         size="icon"
-                        variant="ghost"
+                        variant="destructiveIcon"
                         className="h-7 w-7"
                         onClick={() => setDeleting(item)}
                         aria-label="Delete product"

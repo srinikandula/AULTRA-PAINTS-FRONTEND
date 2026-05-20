@@ -11,6 +11,8 @@ import { BrandList } from '@/features/brands/brand-list';
 import { ProductList } from '@/features/products/product-list';
 import { CreateProduct } from '@/features/products/create-product';
 import { EditProduct } from '@/features/products/edit-product';
+import { CreateCatalog } from '@/features/products/create-catalog';
+import { EditCatalog } from '@/features/products/edit-catalog';
 import { ProductCategoryList } from '@/features/products/product-category-list';
 import { ProductCatalog } from '@/features/products/product-catlog';
 import { ProductDataList } from '@/features/products/product-data-list';
@@ -24,6 +26,7 @@ import { ProductOffers } from '@/features/product-offers/product-offers';
 import { RewardSchemes } from '@/features/reward-schemes/reward-schemes';
 import { Payouts } from '@/features/payouts/payouts';
 import { PrivacyPolicy } from '@/features/privacy-policy/privacy-policy';
+import { Deals } from '@/features/deals/deals';
 
 export function AppRoutes() {
   return (
@@ -52,6 +55,8 @@ export function AppRoutes() {
             <Route path="/product-list" element={<ProductList />} />
             <Route path="/create-product" element={<CreateProduct />} />
             <Route path="/edit-product/:id" element={<EditProduct />} />
+            <Route path="/create-catalog" element={<CreateCatalog />} />
+            <Route path="/edit-catalog/:id" element={<EditCatalog />} />
             <Route path="/product-category-list" element={<ProductCategoryList />} />
             <Route path="/product-catalog" element={<ProductCatalog />} />
             <Route path="/product-data-list" element={<ProductDataList />} />
@@ -60,6 +65,7 @@ export function AppRoutes() {
             <Route path="/transaction-ledger" element={<TransactionLedger />} />
             <Route path="/credit-notes" element={<CreditNotes />} />
             <Route path="/product-offers" element={<ProductOffers />} />
+            <Route path="/deals" element={<Deals />} />
             <Route path="/reward-schemes" element={<RewardSchemes />} />
             <Route path="/payouts" element={<Payouts />} />
           </Route>

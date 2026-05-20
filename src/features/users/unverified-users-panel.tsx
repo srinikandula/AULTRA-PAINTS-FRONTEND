@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { toast } from 'sonner';
+import { Download, Pencil } from 'lucide-react';
 import { CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import { Dialog } from '@/components/ui/dialog';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useUnverifiedUsers } from './hooks';
+import { useUnverifiedUsers, useExportUnverifiedUsers } from './hooks';
 import { UserFormDialog } from './user-form-dialog';
 import type { User } from '@/types/user';
 
@@ -19,16 +20,31 @@ export function UnverifiedUsersPanel() {
   const limit = 20;
 
   const { data, isLoading, isError, error } = useUnverifiedUsers({ page, limit, searchKey });
+  const exportUnverified = useExportUnverifiedUsers();
 
   return (
     <>
       <CardHeader>
-        <Input
-          placeholder="Search by name or mobile..."
-          value={searchKey}
-          onChange={(e) => { setSearchKey(e.target.value); setPage(1); }}
-          className="max-w-sm"
-        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Input
+            placeholder="Search by name or mobile..."
+            value={searchKey}
+            onChange={(e) => { setSearchKey(e.target.value); setPage(1); }}
+            className="max-w-sm"
+          />
+          <Button
+            variant="outline"
+            disabled={exportUnverified.isPending}
+            onClick={() =>
+              exportUnverified.mutate(undefined, {
+                onError: (e) => toast.error(e.message),
+              })
+            }
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {exportUnverified.isPending ? 'Exporting…' : 'Export'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isError && <p className="text-sm text-destructive">Couldn't load: {error.message}</p>}

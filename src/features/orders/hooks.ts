@@ -43,10 +43,18 @@ type RawOrderRow = {
         accountType?: string;
       }
     | string;
+  branchId?: number;
+  branchName?: string;
   narration?: string;
   focusSyncStatus?: FocusSyncStatus;
   focusOrderId?: string | number;
   focusDCInvoiceId?: string[];
+  statusHistory?: Array<{
+    status: string;
+    changedAt: string;
+    changedBy?: { name?: string; accountType?: string } | null;
+    remarks?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 };
@@ -132,11 +140,17 @@ function toOrder(row: RawOrderRow): Order {
     gst: row.gstPrice,
     totalAmount: row.finalPrice ?? row.totalPrice ?? 0,
     status: row.status,
+    branchId: row.branchId,
+    branchName: row.branchName,
     narration: row.narration,
     focusSyncStatus: row.focusSyncStatus,
     focusOrderId: row.focusOrderId,
     focusDCInvoiceId: row.focusDCInvoiceId,
     dcInvoiceIds: row.focusDCInvoiceId,
+    statusHistory: row.statusHistory?.map((h) => ({
+      ...h,
+      changedBy: h.changedBy ?? undefined,
+    })),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -157,6 +171,7 @@ export function useOrders(params: OrderListParams) {
           status: params.status,
           dealerCode: params.dealerCode,
           salesExecutiveMobile: params.salesExecutiveMobile,
+          ...(params.branchId !== undefined && { branchId: params.branchId }),
         },
       });
       return {
@@ -237,6 +252,39 @@ export function useSalesExecutives() {
         'users/sales-executives',
       );
       return env.data ?? [];
+    },
+  });
+}
+
+export type FocusBranch = { iMasterId: number; sName: string };
+
+export function useFocusBranches() {
+  return useQuery<FocusBranch[]>({
+    queryKey: ['focus', 'branches'],
+    queryFn: async () => {
+      const env = await api<{ success: boolean; branches: FocusBranch[] }>(
+        'products/focus-branches',
+      );
+      return env.branches ?? [];
+    },
+  });
+}
+
+export function useUpdateOrderStatusManual() {
+  const qc = useQueryClient();
+  return useMutation<
+    { success: boolean; message?: string },
+    Error,
+    { orderId: string; status: 'DISPATCHED' | 'MANUALLY_DISPATCHED'; remarks?: string }
+  >({
+    mutationFn: (body) =>
+      api<{ success: boolean; message?: string }>('order/updateOrderStatusManual', {
+        method: 'PUT',
+        body,
+      }),
+    onSuccess: (_data, { orderId }) => {
+      qc.invalidateQueries({ queryKey: ['orders', 'detail', orderId] });
+      qc.invalidateQueries({ queryKey: ['orders', 'list'] });
     },
   });
 }

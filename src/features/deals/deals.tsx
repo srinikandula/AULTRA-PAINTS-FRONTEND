@@ -12,15 +12,15 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { cacheBust } from '@/lib/cache-bust';
 import {
-  useProductOffers, useUpdateProductOffer, useDeleteProductOffer,
+  useDeals, useUpdateDeal, useDeleteDeal,
 } from './hooks';
-import { OfferFormDialog } from './offer-form-dialog';
-import type { ProductOffer } from '@/types/product-offer';
+import { DealFormDialog } from './deal-form-dialog';
+import type { Deal } from '@/types/deal';
 
 const PAGE_SIZE = 12;
 
-function StatusPill({ status }: { status: 'Active' | 'Inactive' }) {
-  return status === 'Active' ? (
+function StatusPill({ active }: { active: boolean }) {
+  return active ? (
     <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
       Active
     </span>
@@ -31,10 +31,10 @@ function StatusPill({ status }: { status: 'Active' | 'Inactive' }) {
   );
 }
 
-function categoryLabel(c: ProductOffer['productCategory']): string | null {
+function categoryLabel(c: Deal['category']): string | null {
   if (!c) return null;
   if (typeof c === 'string') return null;
-  return c.name ?? null;
+  return c.categoryName ?? null;
 }
 
 function formatDate(value?: string): string {
@@ -44,37 +44,30 @@ function formatDate(value?: string): string {
   return d.toLocaleDateString();
 }
 
-export function ProductOffers() {
-  const [page, setPage] = useState(1);
-  const [searchKey, setSearchKey] = useState('');
-  const [editing, setEditing] = useState<ProductOffer | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState<ProductOffer | null>(null);
+function isExpired(value: string): boolean {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.getTime() < Date.now();
+}
 
-  const query = useProductOffers({
+export function Deals() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [editing, setEditing] = useState<Deal | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<Deal | null>(null);
+
+  const query = useDeals({
     page,
     limit: PAGE_SIZE,
-    searchKey: searchKey || undefined,
+    search: search || undefined,
   });
-  const update = useUpdateProductOffer();
-  const remove = useDeleteProductOffer();
+  const update = useUpdateDeal();
+  const remove = useDeleteDeal();
 
-  const onToggleStatus = (offer: ProductOffer, nextActive: boolean) => {
-    const productCategoryId =
-      offer.productCategory && typeof offer.productCategory === 'object'
-        ? offer.productCategory._id
-        : (offer.productCategory ?? null);
+  const onToggleStatus = (deal: Deal, nextActive: boolean) => {
     update.mutate(
-      {
-        _id: offer._id,
-        productOfferDescription: offer.productOfferDescription,
-        cashback: offer.cashback,
-        redeemPoints: offer.redeemPoints,
-        validUntil: offer.validUntil,
-        productCategory: productCategoryId,
-        productOfferStatus: nextActive ? 'Active' : 'Inactive',
-        price: [],
-      },
+      { _id: deal._id, active: nextActive },
       {
         onSuccess: () => toast.success('Status updated'),
         onError: (e) => toast.error(e.message),
@@ -87,37 +80,34 @@ export function ProductOffers() {
     remove.mutate(
       { _id: deleting._id },
       {
-        onSuccess: () => {
-          toast.success('Offer deleted');
-          setDeleting(null);
-        },
+        onSuccess: () => { toast.success('Deal deleted'); setDeleting(null); },
         onError: (e) => toast.error(e.message),
       },
     );
   };
 
-  const offers = query.data?.data ?? [];
+  const deals = query.data?.data ?? [];
   const totalPages = query.data?.pagination.totalPages ?? 1;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Product offers</h1>
+        <h1 className="text-2xl font-semibold">Deals</h1>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search..."
-              value={searchKey}
-              onChange={(e) => { setSearchKey(e.target.value); setPage(1); }}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="w-56 pl-8"
             />
           </div>
           <Dialog open={creating} onOpenChange={setCreating}>
             <DialogTrigger asChild>
-              <Button><Plus className="mr-2 h-4 w-4" /> New offer</Button>
+              <Button><Plus className="mr-2 h-4 w-4" /> New deal</Button>
             </DialogTrigger>
-            {creating && <OfferFormDialog onClose={() => setCreating(false)} />}
+            {creating && <DealFormDialog onClose={() => setCreating(false)} />}
           </Dialog>
         </div>
       </div>
@@ -134,31 +124,32 @@ export function ProductOffers() {
             <Skeleton key={i} className="h-80 w-full" />
           ))}
         </div>
-      ) : offers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No product offers yet.</p>
+      ) : deals.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No deals yet — create your first one.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {offers.map((o) => {
-            const category = categoryLabel(o.productCategory);
+          {deals.map((d) => {
+            const category = categoryLabel(d.category);
+            const expired = isExpired(d.expirationDate);
             return (
               <Card
-                key={o._id}
+                key={d._id}
                 role="button"
                 tabIndex={0}
-                onClick={() => setEditing(o)}
+                onClick={() => setEditing(d)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setEditing(o);
+                    setEditing(d);
                   }
                 }}
                 className="cursor-pointer overflow-hidden transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <div className="relative">
-                  {o.productOfferImageUrl ? (
+                  {d.dealImageUrl ? (
                     <img
-                      src={cacheBust(o.productOfferImageUrl, o.updatedAt) ?? undefined}
-                      alt={o.productOfferDescription}
+                      src={cacheBust(d.dealImageUrl, d.updatedAt) ?? undefined}
+                      alt={d.title}
                       className="h-48 w-full object-cover"
                     />
                   ) : (
@@ -166,8 +157,13 @@ export function ProductOffers() {
                       No image
                     </div>
                   )}
-                  <div className="absolute left-2 top-2">
-                    <StatusPill status={o.productOfferStatus} />
+                  <div className="absolute left-2 top-2 flex items-center gap-1">
+                    <StatusPill active={d.active} />
+                    {expired && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        Expired
+                      </span>
+                    )}
                   </div>
                   <div
                     className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-background/90 p-1 shadow-sm"
@@ -177,8 +173,8 @@ export function ProductOffers() {
                       size="icon"
                       variant="editIcon"
                       className="h-7 w-7"
-                      onClick={() => setEditing(o)}
-                      aria-label="Edit offer"
+                      onClick={() => setEditing(d)}
+                      aria-label="Edit deal"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -186,8 +182,8 @@ export function ProductOffers() {
                       size="icon"
                       variant="destructiveIcon"
                       className="h-7 w-7"
-                      onClick={() => setDeleting(o)}
-                      aria-label="Delete offer"
+                      onClick={() => setDeleting(d)}
+                      aria-label="Delete deal"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -196,21 +192,23 @@ export function ProductOffers() {
                 <CardContent className="space-y-2 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="line-clamp-2 text-sm font-semibold">
-                      {o.productOfferDescription}
+                      {d.title}
                     </h3>
                     <div onClick={(e) => e.stopPropagation()}>
                       <Switch
-                        checked={o.productOfferStatus === 'Active'}
-                        onCheckedChange={(c) => onToggleStatus(o, c)}
-                        aria-label="Toggle offer status"
+                        checked={d.active}
+                        onCheckedChange={(c) => onToggleStatus(d, c)}
+                        aria-label="Toggle deal active"
                       />
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Cashback: ₹{o.cashback} | Redeem: {o.redeemPoints} pts
-                  </p>
+                  {d.description && (
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {d.description}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
-                    Valid until: {formatDate(o.validUntil)}
+                    Expires: {formatDate(d.expirationDate)}
                   </p>
                   {category && (
                     <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
@@ -249,18 +247,18 @@ export function ProductOffers() {
       )}
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        {editing && <OfferFormDialog offer={editing} onClose={() => setEditing(null)} />}
+        {editing && <DealFormDialog deal={editing} onClose={() => setEditing(null)} />}
       </Dialog>
 
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Delete offer?"
+        title="Delete deal?"
         description={
           deleting && (
             <>
               <strong className="font-medium text-foreground">
-                {deleting.productOfferDescription}
+                {deleting.title}
               </strong>{' '}
               will be permanently removed. This cannot be undone.
             </>

@@ -9,7 +9,8 @@ export type UserAccountType =
   | 'Contractor'
   | 'Dealer'
   | 'SuperUser'
-  | 'SalesExecutive';
+  | 'SalesExecutive'
+  | 'ProductionManager';
 
 export type User = {
   _id: string;
@@ -20,6 +21,10 @@ export type User = {
   dealerCode?: string;
   parentDealerCode?: string;
   parentSalesExecutive?: string;
+  primaryContactPerson?: string;
+  primaryContactPersonMobile?: string;
+  salesExecutive?: string;       // stores SE mobile number
+  productCategories?: string[];  // array of ProductCategory ObjectIds
   address?: string;
   state?: string;
   zone?: string;
