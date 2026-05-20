@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import type { Paginated } from '@/types/user';
 import type { Product } from '@/types/product';
 
@@ -10,18 +10,28 @@ type ListParams = { page: number; limit: number; searchKey?: string };
 // BrandNameStr, products }`. The catalog (`productCatlog/search`) returns a
 // classic flat envelope `{ data, total, pages, currentPage }` with rich items.
 
+type RawProductItem = {
+  _id: string;
+  brandId: string;
+  BrandNameStr?: string;
+  products: string;
+};
+
 type ProductsListEnvelope = {
-  products: Array<{
-    _id: string;
-    brandId: string;
-    BrandNameStr?: string;
-    products: string;
-  }>;
+  products: RawProductItem[];
   pagination: {
     currentPage: number;
     totalPages: number;
     totalProducts: number;
   };
+};
+
+type ProductSearchEnvelope = {
+  status: number;
+  data: RawProductItem[];
+  total: number;
+  pages: number;
+  currentPage: number;
 };
 
 type CatalogEnvelope<T> = {
@@ -63,12 +73,12 @@ export type CatalogItem = {
   createdAt?: string;
 };
 
-function toProductFromBrandRow(raw: ProductsListEnvelope['products'][number]): Product {
+function toProductFromBrandRow(raw: RawProductItem): Product {
   return {
     _id: raw._id,
     productCode: '',
     productName: raw.products,
-    brand: raw.BrandNameStr ?? raw.brandId,
+    brand: { _id: raw.brandId, brandName: raw.BrandNameStr ?? '' },
   };
 }
 
@@ -76,11 +86,24 @@ export function useProducts(params: ListParams) {
   return useQuery<Paginated<Product>>({
     queryKey: ['products', 'list', params],
     queryFn: async () => {
-      const search = new URLSearchParams({
-        page: String(params.page),
-        limit: String(params.limit),
-      });
-      const env = await api<ProductsListEnvelope>(`products?${search.toString()}`);
+      const qs = new URLSearchParams({ page: String(params.page), limit: String(params.limit) });
+      if (params.searchKey?.trim()) {
+        try {
+          const env = await api<ProductSearchEnvelope>(
+            `products/search/${encodeURIComponent(params.searchKey.trim())}?${qs.toString()}`,
+          );
+          return {
+            data: env.data.map(toProductFromBrandRow),
+            pagination: { currentPage: env.currentPage, totalPages: env.pages, totalRecords: env.total },
+          };
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 404) {
+            return { data: [], pagination: { currentPage: 1, totalPages: 1, totalRecords: 0 } };
+          }
+          throw e;
+        }
+      }
+      const env = await api<ProductsListEnvelope>(`products?${qs.toString()}`);
       return {
         data: env.products.map(toProductFromBrandRow),
         pagination: {
@@ -90,6 +113,24 @@ export function useProducts(params: ListParams) {
         },
       };
     },
+  });
+}
+
+export function useCreateProduct() {
+  const qc = useQueryClient();
+  return useMutation<unknown, Error, { brandId: string; productName: string }>({
+    mutationFn: ({ brandId, productName }) =>
+      api('products', { method: 'POST', body: { brandId, products: productName } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products', 'list'] }),
+  });
+}
+
+export function useUpdateProduct() {
+  const qc = useQueryClient();
+  return useMutation<unknown, Error, { _id: string; brandId: string; productName: string }>({
+    mutationFn: ({ _id, brandId, productName }) =>
+      api(`products/${_id}`, { method: 'PUT', body: { brandId, products: productName } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products', 'list'] }),
   });
 }
 
@@ -133,20 +174,19 @@ export function useProductCatalog(params: ListParams) {
 }
 
 // Catalog create / update mutations target the `/productCatlog/create` and
-// `/productCatlog/update/:id` endpoints. The backend's price field is a
-// JSON-stringified `{ [volume]: Array<{ [refId]: price }> }` object — v1
-// hard-codes refId="All" for every entry; geo-pricing (state/zone/district
-// places) is a v2 feature. `productImage` is a base64 data URI; on update
-// it's only sent when the user picks a new file.
+// `/productCatlog/update/:id` endpoints. Prices are auto-seeded from the
+// Focus8 pricebook on save — no manual `price` field. `focusProductMapping`
+// is a JSON-stringified `[{ volume, focusProductId, focusUnitId }]` array
+// (required on create, or null on update to skip re-seeding prices).
+// `productImage` is a base64 data URI; on update it's only sent when the
+// user picks a new file.
 type CatalogMutationBody = {
   productDescription: string;
   productStatus: 'Active' | 'Inactive';
   productCategory: string | null;
-  focusProductId: string;
-  focusUnitId: number;
-  focusProductMapping: string | null; // JSON-stringified array, or null
-  price: string;                       // JSON-stringified object
-  productImage?: string;               // base64 data URI; create-required
+  // JSON-stringified array on create/full-edit; null to skip price re-seed (e.g. status toggle)
+  focusProductMapping: string | null;
+  productImage?: string; // base64 data URI; create-required
 };
 
 export function useCreateCatalog() {
@@ -195,6 +235,29 @@ export function useFocusProducts() {
       );
       return env.data ?? [];
     },
+  });
+}
+
+export function useSyncProductPrices() {
+  const qc = useQueryClient();
+  return useMutation<{ success: boolean; pricesSynced: number }, Error, string>({
+    mutationFn: (productId) =>
+      api<{ success: boolean; pricesSynced: number }>(
+        `productCatlog/syncPrices/${productId}`,
+        { method: 'PUT' },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products', 'catalog'] }),
+  });
+}
+
+export type SyncAllResult = { success: boolean; synced: number; skipped: number; errors: string[] };
+
+export function useSyncAllProductPrices() {
+  const qc = useQueryClient();
+  return useMutation<SyncAllResult, Error, void>({
+    mutationFn: () =>
+      api<SyncAllResult>('productCatlog/syncAllPrices', { method: 'PUT' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products', 'catalog'] }),
   });
 }
 

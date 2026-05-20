@@ -83,7 +83,9 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
           message:
             typeof json.message === 'string' ? json.message :
             typeof json.error === 'string' ? json.error :
-            undefined,
+            Array.isArray(json.errors) && json.errors.length > 0
+              ? (json.errors as string[]).join(', ')
+              : undefined,
         };
       } catch {
         // Non-JSON body (e.g. Express default error HTML, or a plain text

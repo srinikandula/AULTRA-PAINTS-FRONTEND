@@ -4,10 +4,10 @@ import type { ProductCategory } from '@/types/product-category';
 
 // Backend `ProductCategory` is `{ _id, name }` (mounted at /productCategories).
 // We adapt at the hook boundary so the UI keeps using `categoryName`.
-type BackendCategory = { _id: string; name: string };
+type BackendCategory = { _id: string; name: string; description?: string };
 
 function toCategory(raw: BackendCategory): ProductCategory {
-  return { _id: raw._id, categoryName: raw.name };
+  return { _id: raw._id, categoryName: raw.name, description: raw.description ?? '' };
 }
 
 export function useProductCategories() {
@@ -23,10 +23,10 @@ export function useProductCategories() {
 export function useCreateCategory() {
   const qc = useQueryClient();
   return useMutation<ProductCategory, Error, { categoryName: string; description?: string }>({
-    mutationFn: async ({ categoryName }) => {
+    mutationFn: async ({ categoryName, description }) => {
       const env = await api<{ data: BackendCategory; message?: string }>('productCategories', {
         method: 'POST',
-        body: { name: categoryName },
+        body: { name: categoryName, description: description ?? '' },
       });
       return toCategory(env.data);
     },
@@ -37,10 +37,10 @@ export function useCreateCategory() {
 export function useUpdateCategory() {
   const qc = useQueryClient();
   return useMutation<ProductCategory, Error, { _id: string; categoryName: string; description?: string }>({
-    mutationFn: async ({ _id, categoryName }) => {
+    mutationFn: async ({ _id, categoryName, description }) => {
       const env = await api<{ data: BackendCategory; message?: string }>(`productCategories/${_id}`, {
         method: 'PUT',
-        body: { name: categoryName },
+        body: { name: categoryName, description: description ?? '' },
       });
       return toCategory(env.data);
     },

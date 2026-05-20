@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Download, Pencil, Plus, Trash2 } from 'lucide-react';
 import { CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { useUsers, useToggleUserStatus, useDeleteUser } from './hooks';
+import { useUsers, useToggleUserStatus, useDeleteUser, useExportUsers } from './hooks';
 import { UserFormDialog } from './user-form-dialog';
 import type { User, UserAccountType } from '@/types/user';
 
@@ -46,6 +46,7 @@ export function UsersPanel() {
   });
   const toggleStatus = useToggleUserStatus();
   const remove = useDeleteUser();
+  const exportUsers = useExportUsers();
 
   return (
     <>
@@ -74,12 +75,27 @@ export function UsersPanel() {
               </SelectContent>
             </Select>
           </div>
-          <Dialog open={creating} onOpenChange={setCreating}>
-            <DialogTrigger asChild>
-              <Button><Plus className="mr-2 h-4 w-4" /> New user</Button>
-            </DialogTrigger>
-            {creating && <UserFormDialog onClose={() => setCreating(false)} />}
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              disabled={exportUsers.isPending}
+              onClick={() =>
+                exportUsers.mutate(
+                  { searchQuery: searchKey, accountType },
+                  { onError: (e) => toast.error(e.message) },
+                )
+              }
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {exportUsers.isPending ? 'Exporting…' : 'Export'}
+            </Button>
+            <Dialog open={creating} onOpenChange={setCreating}>
+              <DialogTrigger asChild>
+                <Button><Plus className="mr-2 h-4 w-4" /> New user</Button>
+              </DialogTrigger>
+              {creating && <UserFormDialog onClose={() => setCreating(false)} />}
+            </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

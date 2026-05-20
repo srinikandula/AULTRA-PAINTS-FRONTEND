@@ -4,7 +4,8 @@ export type OrderStatus =
   | 'VERIFIED'
   | 'REJECTED'
   | 'DISPATCHED'
-  | 'IN-PARCEL';
+  | 'PARTIALLY_DISPATCHED'
+  | 'MANUALLY_DISPATCHED';
 
 export type FocusSyncStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
 
@@ -63,6 +64,8 @@ export type Order = {
   // Optional aliases mirrored by the hook for the detail panel.
   subTotal?: number;
   gst?: number;
+  branchId?: number;
+  branchName?: string;
   narration?: string;
   // Focus 8 integration fields.
   focusSyncStatus?: FocusSyncStatus;
@@ -73,6 +76,12 @@ export type Order = {
   // `dcInvoiceIds` by the hook for readability at the call site.
   focusDCInvoiceId?: string[];
   dcInvoiceIds?: string[];
+  statusHistory?: Array<{
+    status: string;
+    changedAt: string;
+    changedBy?: { name?: string; accountType?: string };
+    remarks?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 };
@@ -89,4 +98,5 @@ export type OrderListParams = {
   //   rows. As of writing, the backend `getOrders` body only reads
   //   page/limit/status/dealerCode, so this is silently ignored.
   salesExecutiveMobile?: string;
+  branchId?: number;
 };

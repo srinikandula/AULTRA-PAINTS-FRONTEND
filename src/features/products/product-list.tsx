@@ -20,8 +20,6 @@ export function ProductList() {
 
   const brandName = (b: NonNullable<typeof data>['data'][number]['brand']) =>
     typeof b === 'string' ? b : b?.brandName ?? '—';
-  const categoryName = (c: NonNullable<typeof data>['data'][number]['category']) =>
-    typeof c === 'string' ? c : c?.categoryName ?? '—';
 
   return (
     <div className="space-y-6">
@@ -33,7 +31,7 @@ export function ProductList() {
       <Card>
         <CardHeader>
           <Input
-            placeholder="Search by name or code…"
+            placeholder="Search by name…"
             value={searchKey}
             onChange={(e) => { setSearchKey(e.target.value); setPage(1); }}
             className="max-w-sm"
@@ -50,29 +48,21 @@ export function ProductList() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Code</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Brand</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Redeem</TableHead>
-                    <TableHead>Cashback</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data?.data.map((p) => (
                     <TableRow key={p._id}>
-                      <TableCell>{p.productCode}</TableCell>
                       <TableCell>{p.productName}</TableCell>
                       <TableCell>{brandName(p.brand)}</TableCell>
-                      <TableCell>{categoryName(p.category)}</TableCell>
-                      <TableCell>{p.price ?? '—'}</TableCell>
-                      <TableCell>{p.redeemPoints ?? 0}</TableCell>
-                      <TableCell>{p.cashback ?? 0}</TableCell>
                       <TableCell className="space-x-2 text-right">
                         <Button asChild size="sm" variant="outline">
-                          <Link to={`/edit-product/${p._id}`}><Pencil className="h-4 w-4" /></Link>
+                          <Link to={`/edit-product/${p._id}`} state={{ product: p }}>
+                            <Pencil className="h-4 w-4" />
+                          </Link>
                         </Button>
                         <Button
                           size="sm"

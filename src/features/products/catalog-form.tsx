@@ -4,7 +4,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ImagePlus, Plus, Trash2 } from 'lucide-react';
+import { Check, ChevronsUpDown, ImagePlus, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,47 +15,224 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { useProductCategories } from './product-categories-hooks';
 import {
-  useCreateCatalog, useUpdateCatalog, useFocusProducts,
+  useCreateCatalog, useUpdateCatalog, useFocusProducts, useSyncProductPrices,
 } from './hooks';
 import { compressImage } from '@/lib/compress-image';
 import { cacheBust } from '@/lib/cache-bust';
-import type { CatalogItem } from './hooks';
+import type { CatalogItem, FocusProduct } from './hooks';
 
 const NONE = '__none__';
 
-const VOLUMES = [
-  '10ML', '20ML', '30ML', '50ML', '100ML', '200ML', '500ML',
-  '1LT', '2LT', '4LT', '5LT', '10LT', '20LT',
-  '1KG', '2KG', '5KG', '10KG', '20KG', '50KG',
-] as const;
+// Extracts the leading volume token from a Focus8 product name.
+// e.g. "1LT Undercoat" → "1LT", "500ML Primer" → "500ML", "5KG Putty" → "5KG"
+function extractVolume(sName: string): string {
+  // Match volume token anywhere in the name (e.g. "AULTRA PRIMER 20LTRS" or "1LT Undercoat")
+  const match = sName.match(/\b(\d+(?:\.\d+)?(?:LTRS|LTR|LT|ML|KGS|KG|G|L))\b/i);
+  return match ? match[1].toUpperCase() : '';
+}
+
+function stripVolume(sName: string): string {
+  return sName.replace(/\b\d+(?:\.\d+)?(?:LTRS|LTR|LT|ML|KGS|KG|G|L)\b/gi, '').replace(/\s+/g, ' ').trim();
+}
+
+type FocusProductComboboxProps = {
+  value: string;
+  onChange: (value: string, fp: FocusProduct | undefined) => void;
+  focusProducts: FocusProduct[] | undefined;
+  isLoading: boolean;
+};
+
+function FocusProductCombobox({ value, onChange, focusProducts, isLoading }: FocusProductComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!focusProducts) return [];
+    const q = search.toLowerCase();
+    return q ? focusProducts.filter((fp) => fp.sName.toLowerCase().includes(q)) : focusProducts;
+  }, [focusProducts, search]);
+
+  const selectedName = useMemo(
+    () => focusProducts?.find((fp) => String(fp.iMasterId) === value)?.sName ?? null,
+    [value, focusProducts],
+  );
+
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(''); }}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          <span className="truncate text-left">
+            {selectedName ?? (isLoading ? 'Loading…' : 'Select focus product')}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-96 p-2" align="start">
+        <Input
+          placeholder="Search…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mb-2 h-8"
+          autoFocus
+        />
+        <div className="max-h-60 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="py-2 text-center text-sm text-muted-foreground">No results</p>
+          ) : (
+            filtered.map((fp) => {
+              const id = String(fp.iMasterId);
+              const selected = id === value;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={cn(
+                    'flex w-full items-start gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent',
+                    selected && 'bg-accent',
+                  )}
+                  onClick={() => {
+                    onChange(id, fp);
+                    setSearch('');
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn('mt-0.5 h-4 w-4 shrink-0', selected ? 'opacity-100' : 'opacity-0')} />
+                  <span className="text-left">{fp.sName}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+type AddFocusProductsButtonProps = {
+  focusProducts: FocusProduct[] | undefined;
+  isLoading: boolean;
+  onAdd: (fps: FocusProduct[]) => void;
+};
+
+function AddFocusProductsButton({ focusProducts, isLoading, onAdd }: AddFocusProductsButtonProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const filtered = useMemo(() => {
+    if (!focusProducts) return [];
+    const q = search.toLowerCase();
+    return q ? focusProducts.filter((fp) => fp.sName.toLowerCase().includes(q)) : focusProducts;
+  }, [focusProducts, search]);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const reset = () => { setSearch(''); setSelected(new Set()); };
+
+  const handleAdd = () => {
+    const fps = (focusProducts ?? []).filter((fp) => selected.has(String(fp.iMasterId)));
+    onAdd(fps);
+    reset();
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
+          <Plus className="mr-2 h-4 w-4" /> Add focus products
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-96 p-2" align="end">
+        <Input
+          placeholder="Search…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mb-2 h-8"
+          autoFocus
+        />
+        <div className="max-h-64 overflow-y-auto">
+          {isLoading ? (
+            <p className="py-2 text-center text-sm text-muted-foreground">Loading…</p>
+          ) : filtered.length === 0 ? (
+            <p className="py-2 text-center text-sm text-muted-foreground">No results</p>
+          ) : (
+            filtered.map((fp) => {
+              const id = String(fp.iMasterId);
+              const checked = selected.has(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={cn(
+                    'flex w-full items-start gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent',
+                    checked && 'bg-accent/60',
+                  )}
+                  onClick={() => toggle(id)}
+                >
+                  <div
+                    className={cn(
+                      'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border',
+                      checked ? 'bg-primary border-primary' : 'border-input',
+                    )}
+                  >
+                    {checked && <Check className="h-3 w-3 text-primary-foreground" />}
+                  </div>
+                  <span className="text-left">{fp.sName}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+        <div className="mt-2 border-t pt-2">
+          <Button
+            type="button"
+            size="sm"
+            className="w-full"
+            disabled={selected.size === 0}
+            onClick={handleAdd}
+          >
+            {selected.size > 0
+              ? `Add ${selected.size} product${selected.size !== 1 ? 's' : ''}`
+              : 'Select products above'}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const volumeRowSchema = z.object({
-  volume: z.string().min(1, 'Pick a volume'),
-  price: z.coerce.number().positive('Must be > 0'),
+  volume: z.string().min(1, 'Volume is required'),
+  focusProductId: z.string().min(1, 'Pick a focus product'),
 });
 
 const schema = z.object({
   productDescription: z.string().min(1, 'Required'),
   productStatus: z.enum(['Active', 'Inactive']),
   productCategory: z.string().optional(),
-  focusProductId: z.string().min(1, 'Pick a focus product'),
-  volumeRows: z.array(volumeRowSchema).min(1, 'Add at least one price row'),
+  volumeRows: z.array(volumeRowSchema).min(1, 'Add at least one volume'),
 });
 
 type CatalogValues = z.infer<typeof schema>;
-
-// TODO: geo-pricing -- replace the single "All" place per volume row with a
-//   sub-table allowing one or more {place, price} pairs where place is "All"
-//   or a state/zone/district. Currently hard-codes refId: "All" for every row.
-
-// TODO: focusProductMapping -- Angular maps each volume to a focus-product id
-//   based on the volume extracted from the focus-product's sName. v1 sends
-//   null and relies on the backend's tolerance.
 
 type CatalogFormProps = {
   initial?: CatalogItem;
@@ -67,28 +244,23 @@ function categoryIdOf(c: CatalogItem['productCategory']): string {
   return c._id ?? '';
 }
 
-// Group an existing catalog's stored price rows -- `{volume, refId, price}[]`
-// -- back into the form's `volumeRows` shape. v1 only renders the
-// `refId: "All"` entries; if a volume only has non-"All" entries, we fall
-// back to the first row so we never drop the volume entirely.
-function volumeRowsFromCatalog(
-  price: CatalogItem['price'],
-): Array<{ volume: string; price: number }> {
-  if (!price?.length) return [];
-  const byVolume = new Map<string, Array<{ refId: string; price: number }>>();
-  for (const row of price) {
-    if (!row.volume) continue;
-    const arr = byVolume.get(row.volume) ?? [];
-    arr.push({ refId: row.refId, price: row.price });
-    byVolume.set(row.volume, arr);
+function defaultRowsFromCatalog(item: CatalogItem): Array<{ volume: string; focusProductId: string }> {
+  // Prefer the explicit per-volume mapping (v2 products)
+  if (item.focusProductMapping?.length) {
+    return item.focusProductMapping.map((m) => ({
+      volume: m.volume,
+      focusProductId: String(m.focusProductId),
+    }));
   }
-  const rows: Array<{ volume: string; price: number }> = [];
-  for (const [volume, entries] of byVolume) {
-    const allEntry = entries.find((e) => e.refId === 'All');
-    const chosen = allEntry ?? entries[0];
-    rows.push({ volume, price: chosen.price });
+  // Backward compat: v1 product with a single focusProductId — derive rows from stored price volumes
+  const volumes = [...new Set((item.price ?? []).map((p) => p.volume).filter(Boolean))];
+  if (volumes.length > 0) {
+    return volumes.map((v) => ({
+      volume: v,
+      focusProductId: item.focusProductId ? String(item.focusProductId) : '',
+    }));
   }
-  return rows;
+  return [{ volume: '', focusProductId: '' }];
 }
 
 export function CatalogForm({ initial }: CatalogFormProps) {
@@ -98,6 +270,7 @@ export function CatalogForm({ initial }: CatalogFormProps) {
   const focusProducts = useFocusProducts();
   const create = useCreateCatalog();
   const update = useUpdateCatalog();
+  const syncPrices = useSyncProductPrices();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [imageDataUri, setImageDataUri] = useState<string | null>(
@@ -106,9 +279,9 @@ export function CatalogForm({ initial }: CatalogFormProps) {
   const hasNewImage = imageDataUri?.startsWith('data:') ?? false;
 
   const defaultRows = useMemo(() => {
-    if (!initial) return [{ volume: '', price: 0 }];
-    const rows = volumeRowsFromCatalog(initial.price);
-    return rows.length > 0 ? rows : [{ volume: '', price: 0 }];
+    if (!initial) return [];
+    const rows = defaultRowsFromCatalog(initial);
+    return rows.length > 0 ? rows : [];
   }, [initial]);
 
   const form = useForm<CatalogValues>({
@@ -117,9 +290,6 @@ export function CatalogForm({ initial }: CatalogFormProps) {
       productDescription: initial?.productOfferDescription ?? '',
       productStatus: initial?.productOfferStatus ?? 'Active',
       productCategory: categoryIdOf(initial?.productCategory) || NONE,
-      focusProductId: initial?.focusProductId
-        ? String(initial.focusProductId)
-        : '',
       volumeRows: defaultRows,
     },
   });
@@ -127,12 +297,21 @@ export function CatalogForm({ initial }: CatalogFormProps) {
   const rows = useFieldArray({ control: form.control, name: 'volumeRows' });
   const statusValue = form.watch('productStatus');
 
+  const onAddFocusProducts = (fps: FocusProduct[]) => {
+    fps.forEach((fp) => {
+      rows.append({ focusProductId: String(fp.iMasterId), volume: extractVolume(fp.sName) });
+    });
+    // Auto-fill description from first selected product name (volume stripped) if still empty
+    if (fps.length > 0 && !form.getValues('productDescription').trim()) {
+      const derived = stripVolume(fps[0].sName);
+      if (derived) form.setValue('productDescription', derived, { shouldValidate: true });
+    }
+  };
+
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      // Downscale + JPEG-encode so the base64 payload fits under the
-      // backend's bodyParser.json() default 100KB limit.
       const compressed = await compressImage(file);
       setImageDataUri(compressed);
     } catch (err) {
@@ -147,26 +326,24 @@ export function CatalogForm({ initial }: CatalogFormProps) {
       return;
     }
 
-    // v1: refId hard-coded to "All" for every entry. Geo-pricing is TODO.
-    const price: Record<string, Array<Record<string, number>>> = {};
-    for (const row of values.volumeRows) {
-      if (!price[row.volume]) price[row.volume] = [];
-      price[row.volume].push({ All: row.price });
-    }
-
     const productCategory =
       values.productCategory && values.productCategory !== NONE
         ? values.productCategory
         : null;
 
+    const focusProductMapping = JSON.stringify(
+      values.volumeRows.map((r) => ({
+        volume: r.volume,
+        focusProductId: Number(r.focusProductId),
+        focusUnitId: 1,
+      })),
+    );
+
     const basePayload = {
       productDescription: values.productDescription,
       productStatus: values.productStatus,
       productCategory,
-      focusProductId: values.focusProductId,
-      focusUnitId: 1,
-      focusProductMapping: null,
-      price: JSON.stringify(price),
+      focusProductMapping,
     };
 
     const payload = isNewImage && imageDataUri
@@ -191,6 +368,15 @@ export function CatalogForm({ initial }: CatalogFormProps) {
     });
   });
 
+  const onSyncPrices = () => {
+    if (!initial) return;
+    syncPrices.mutate(initial._id, {
+      onSuccess: (data) =>
+        toast.success(`Synced ${data.pricesSynced} price${data.pricesSynced !== 1 ? 's' : ''} from Focus8`),
+      onError: (e) => toast.error(e.message),
+    });
+  };
+
   const isPending = create.isPending || update.isPending;
 
   return (
@@ -201,9 +387,7 @@ export function CatalogForm({ initial }: CatalogFormProps) {
       <CardContent>
         <Form {...form}>
           <form className="space-y-4" onSubmit={onSubmit}>
-            {/* Image is held in local state (not RHF-managed) — render plain
-                elements rather than FormItem/FormLabel/FormControl so we don't
-                need a FormField context wrapper (which would throw at render). */}
+            {/* Image — held in local state, not RHF-managed */}
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none">
                 Image{isEdit ? '' : ' *'}
@@ -324,48 +508,20 @@ export function CatalogForm({ initial }: CatalogFormProps) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="focusProductId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Focus product</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            focusProducts.isLoading
-                              ? 'Loading...'
-                              : 'Select a focus product'
-                          }
-                        />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {focusProducts.data?.map((fp) => (
-                        <SelectItem key={fp.iMasterId} value={String(fp.iMasterId)}>
-                          {fp.sName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            {/* Volumes — each row maps to one Focus8 product */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Price by volume</h2>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => rows.append({ volume: '', price: 0 })}
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Add row
-                </Button>
+                <div>
+                  <h2 className="text-lg font-semibold">Volumes &amp; Focus products</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Prices are fetched automatically from the Focus8 price book on save.
+                  </p>
+                </div>
+                <AddFocusProductsButton
+                  focusProducts={focusProducts.data}
+                  isLoading={focusProducts.isLoading}
+                  onAdd={onAddFocusProducts}
+                />
               </div>
               {form.formState.errors.volumeRows?.message && (
                 <p className="text-sm text-destructive">
@@ -376,32 +532,45 @@ export function CatalogForm({ initial }: CatalogFormProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[140px]">Volume</TableHead>
-                      <TableHead>Price</TableHead>
+                      <TableHead className="min-w-[200px]">Focus product</TableHead>
+                      <TableHead className="min-w-[110px]">Volume</TableHead>
                       <TableHead className="w-12 text-right">&nbsp;</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {rows.fields.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
+                          Use "Add focus products" to add volume rows.
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {rows.fields.map((row, idx) => (
                       <TableRow key={row.id}>
                         <TableCell>
                           <FormField
                             control={form.control}
-                            name={`volumeRows.${idx}.volume`}
+                            name={`volumeRows.${idx}.focusProductId`}
                             render={({ field }) => (
                               <FormItem>
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Volume" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {VOLUMES.map((v) => (
-                                      <SelectItem key={v} value={v}>{v}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <FormControl>
+                                  <FocusProductCombobox
+                                    value={field.value}
+                                    onChange={(val, fp) => {
+                                      field.onChange(val);
+                                      if (fp) {
+                                        const v = extractVolume(fp.sName);
+                                        if (v) {
+                                          form.setValue(`volumeRows.${idx}.volume`, v, {
+                                            shouldValidate: true,
+                                          });
+                                        }
+                                      }
+                                    }}
+                                    focusProducts={focusProducts.data}
+                                    isLoading={focusProducts.isLoading}
+                                  />
+                                </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -410,20 +579,11 @@ export function CatalogForm({ initial }: CatalogFormProps) {
                         <TableCell>
                           <FormField
                             control={form.control}
-                            name={`volumeRows.${idx}.price`}
+                            name={`volumeRows.${idx}.volume`}
                             render={({ field }) => (
                               <FormItem>
                                 <FormControl>
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    step="0.01"
-                                    value={field.value ?? ''}
-                                    onChange={field.onChange}
-                                    onBlur={field.onBlur}
-                                    name={field.name}
-                                    ref={field.ref}
-                                  />
+                                  <Input placeholder="e.g. 1LT" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -453,6 +613,17 @@ export function CatalogForm({ initial }: CatalogFormProps) {
               <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
                 Cancel
               </Button>
+              {isEdit && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={syncPrices.isPending}
+                  onClick={onSyncPrices}
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4${syncPrices.isPending ? ' animate-spin' : ''}`} />
+                  {syncPrices.isPending ? 'Syncing...' : 'Sync prices'}
+                </Button>
+              )}
               <Button type="submit" disabled={isPending}>
                 {isPending ? 'Saving...' : 'Save'}
               </Button>

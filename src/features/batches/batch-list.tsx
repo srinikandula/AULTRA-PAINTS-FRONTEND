@@ -74,7 +74,6 @@ export function BatchList() {
                   <TableHead>Expiry</TableHead>
                   <TableHead>Qty</TableHead>
                   <TableHead>Coupon series</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -87,7 +86,6 @@ export function BatchList() {
                     <TableCell>{b.expiryDate ?? '-'}</TableCell>
                     <TableCell>{b.quantity ?? 0}</TableCell>
                     <TableCell>{`${b.couponSeriesStart ?? '-'}-${b.couponSeriesEnd ?? '-'}`}</TableCell>
-                    <TableCell>{b.status ?? '-'}</TableCell>
                     <TableCell className="space-x-2 text-right">
                       <Button
                         size="sm"

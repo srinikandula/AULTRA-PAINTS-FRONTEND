@@ -11,6 +11,8 @@ import { BrandList } from '@/features/brands/brand-list';
 import { ProductList } from '@/features/products/product-list';
 import { CreateProduct } from '@/features/products/create-product';
 import { EditProduct } from '@/features/products/edit-product';
+import { CreateCatalog } from '@/features/products/create-catalog';
+import { EditCatalog } from '@/features/products/edit-catalog';
 import { ProductCategoryList } from '@/features/products/product-category-list';
 import { ProductCatalog } from '@/features/products/product-catlog';
 import { ProductDataList } from '@/features/products/product-data-list';
@@ -53,6 +55,8 @@ export function AppRoutes() {
             <Route path="/product-list" element={<ProductList />} />
             <Route path="/create-product" element={<CreateProduct />} />
             <Route path="/edit-product/:id" element={<EditProduct />} />
+            <Route path="/create-catalog" element={<CreateCatalog />} />
+            <Route path="/edit-catalog/:id" element={<EditCatalog />} />
             <Route path="/product-category-list" element={<ProductCategoryList />} />
             <Route path="/product-catalog" element={<ProductCatalog />} />
             <Route path="/product-data-list" element={<ProductDataList />} />
