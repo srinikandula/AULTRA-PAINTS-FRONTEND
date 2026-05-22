@@ -30,16 +30,16 @@ import type { CatalogItem, FocusProduct } from './hooks';
 
 const NONE = '__none__';
 
-// Extracts the leading volume token from a Focus8 product name.
-// e.g. "1LT Undercoat" → "1LT", "500ML Primer" → "500ML", "5KG Putty" → "5KG"
+// Extracts the volume token from a Focus8 product name.
+// Handles both joined ("20LTR") and space-separated ("20 LTR") formats.
+// e.g. "1LT Undercoat" → "1LT", "AULTRA PRIMER 20 LTRS" → "20LTRS", "500ML Primer" → "500ML"
 function extractVolume(sName: string): string {
-  // Match volume token anywhere in the name (e.g. "AULTRA PRIMER 20LTRS" or "1LT Undercoat")
-  const match = sName.match(/\b(\d+(?:\.\d+)?(?:LTRS|LTR|LT|ML|KGS|KG|G|L))\b/i);
-  return match ? match[1].toUpperCase() : '';
+  const match = sName.match(/\b(\d+(?:\.\d+)?)\s*(LTRS|LTR|LT|ML|KGS|KG|G|L)\b/i);
+  return match ? `${match[1]}${match[2].toUpperCase()}` : '';
 }
 
 function stripVolume(sName: string): string {
-  return sName.replace(/\b\d+(?:\.\d+)?(?:LTRS|LTR|LT|ML|KGS|KG|G|L)\b/gi, '').replace(/\s+/g, ' ').trim();
+  return sName.replace(/\b\d+(?:\.\d+)?\s*(?:LTRS|LTR|LT|ML|KGS|KG|G|L)\b/gi, '').replace(/\s+/g, ' ').trim();
 }
 
 type FocusProductComboboxProps = {
