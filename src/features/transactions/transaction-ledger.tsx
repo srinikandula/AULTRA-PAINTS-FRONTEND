@@ -9,10 +9,36 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useLedger, ledgerPdfUrl } from './hooks';
+import { useLedger, openLedgerPdf } from './hooks';
 
 const ALL = '__all__';
 type CreditNoteStatus = 'pending' | 'issued';
+
+function PdfButton({ rowId }: { rowId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    setLoading(true);
+    setError(null);
+    try {
+      await openLedgerPdf(rowId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to open PDF');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button variant="outline" size="sm" onClick={handleClick} disabled={loading}>
+        {loading ? 'Loading…' : 'PDF'}
+      </Button>
+      {error && <span className="text-xs text-destructive">{error}</span>}
+    </div>
+  );
+}
 
 export function TransactionLedger() {
   const [page, setPage] = useState(1);
@@ -100,9 +126,7 @@ export function TransactionLedger() {
                       <TableCell>{row.cashBalance ?? 0}</TableCell>
                       <TableCell>{row.uniqueCode ?? '—'}</TableCell>
                       <TableCell className="text-right">
-                        <Button asChild variant="outline" size="sm">
-                          <a href={ledgerPdfUrl(row._id)} target="_blank" rel="noreferrer">PDF</a>
-                        </Button>
+                        <PdfButton rowId={row._id} />
                       </TableCell>
                     </TableRow>
                   ))}
