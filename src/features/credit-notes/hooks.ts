@@ -48,11 +48,30 @@ export function useCreditNotes(params: Params) {
   });
 }
 
-// NOTE: like ledgerPdfUrl, this endpoint is JWT-protected (passport + ADMIN).
-// A plain <a href> click won't send the bearer token; the Angular client had
-// the same gap. URL itself is correct (matches the registered GET route).
-export function creditNotePdfUrl(creditNoteNumber: string) {
-  return `${env.apiUrl.replace(/\/$/, '')}/creditNotes/pdf/${creditNoteNumber}`;
+// Fetch the JWT-protected credit note PDF with the Authorization header and
+// trigger a browser download.
+export async function openCreditNotePdf(creditNoteNumber: string): Promise<void> {
+  const { useAuthStore } = await import('@/stores/auth-store');
+  const token = useAuthStore.getState().token;
+  const url = `${env.apiUrl.replace(/\/$/, '')}/creditNotes/pdf/${creditNoteNumber}`;
+
+  const res = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) throw new Error(`Failed to load PDF (${res.status})`);
+
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = `CreditNote-${creditNoteNumber}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
 }
 
 export type Dealer = {

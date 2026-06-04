@@ -10,13 +10,39 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useCreditNotes, creditNotePdfUrl } from './hooks';
+import { useCreditNotes, openCreditNotePdf } from './hooks';
 import { IssueCreditNoteDialog } from './issue-credit-note-dialog';
 import type { CreditNote } from '@/types/credit-note';
 
 const ALL = '__all__';
 const STATUS_OPTIONS: CreditNote['status'][] = ['issued', 'redeemed', 'cancelled'];
 const BALANCE_TYPE_OPTIONS: CreditNote['balanceType'][] = ['rewardPoints', 'cash'];
+
+function PdfButton({ creditNoteNumber }: { creditNoteNumber: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    setLoading(true);
+    setError(null);
+    try {
+      await openCreditNotePdf(creditNoteNumber);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to open PDF');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button variant="outline" size="sm" onClick={handleClick} disabled={loading}>
+        {loading ? 'Loading…' : 'PDF'}
+      </Button>
+      {error && <span className="text-xs text-destructive">{error}</span>}
+    </div>
+  );
+}
 
 export function CreditNotes() {
   const [page, setPage] = useState(1);
@@ -128,9 +154,7 @@ export function CreditNotes() {
                       </TableCell>
                       <TableCell>{n.narration ?? '—'}</TableCell>
                       <TableCell className="text-right">
-                        <Button asChild variant="outline" size="sm">
-                          <a href={creditNotePdfUrl(n.creditNoteNumber)} target="_blank" rel="noreferrer">PDF</a>
-                        </Button>
+                        <PdfButton creditNoteNumber={n.creditNoteNumber} />
                       </TableCell>
                     </TableRow>
                   ))}

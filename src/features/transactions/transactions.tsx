@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Download } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,12 +8,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useTransactions } from './hooks';
+import { useTransactions, exportTransactions } from './hooks';
+
+// Matches the export format: D-M-YYYY h:mm A  (e.g. 4-6-2026 2:30 PM)
+function fmtDate(iso: string | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const day   = d.getDate();
+  const month = d.getMonth() + 1;
+  const year  = d.getFullYear();
+  const h     = d.getHours();
+  const min   = String(d.getMinutes()).padStart(2, '0');
+  const ampm  = h >= 12 ? 'PM' : 'AM';
+  const hour  = h % 12 || 12;
+  return `${day}-${month}-${year} ${hour}:${min} ${ampm}`;
+}
 
 export function Transactions() {
   const [page, setPage] = useState(1);
   const [searchKey, setSearchKey] = useState('');
   const [showUsedCoupons, setShowUsedCoupons] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const limit = 20;
 
   const { data, isLoading, isError, error } = useTransactions({
@@ -21,6 +37,15 @@ export function Transactions() {
     searchKey,
     showUsedCoupons,
   });
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await exportTransactions({ searchKey: searchKey || undefined, showUsedCoupons });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -45,6 +70,12 @@ export function Transactions() {
               />
               <label htmlFor="used" className="text-sm">Show used coupons</label>
             </div>
+            <div className="ml-auto">
+              <Button variant="outline" onClick={handleExport} disabled={exporting}>
+                <Download className="mr-2 h-4 w-4" />
+                {exporting ? 'Exporting…' : 'Export'}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -65,20 +96,22 @@ export function Transactions() {
                     <TableHead>Points reward</TableHead>
                     <TableHead>Cash reward</TableHead>
                     <TableHead>Redeemed by (pts)</TableHead>
+                    <TableHead>Redeemed at (pts)</TableHead>
                     <TableHead>Redeemed by (cash)</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>Redeemed at (cash)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data?.data.map((t) => (
                     <TableRow key={t._id}>
                       <TableCell>{t.couponCode}</TableCell>
-                      <TableCell>{t.UDID}</TableCell>
+                      <TableCell>{t.UDID ?? '—'}</TableCell>
                       <TableCell>{t.redeemablePoints ?? 0}</TableCell>
                       <TableCell>{t.value ?? 0}</TableCell>
                       <TableCell>{t.pointsRedeemedBy ?? '—'}</TableCell>
+                      <TableCell>{fmtDate(t.pointsRedeemedAt)}</TableCell>
                       <TableCell>{t.cashRedeemedBy ?? '—'}</TableCell>
-                      <TableCell>{new Date(t.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{fmtDate(t.cashRedeemedAt)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
