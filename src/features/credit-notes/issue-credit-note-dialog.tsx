@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { useDealers, useIssueCreditNote } from './hooks';
 
 const schema = z.object({
@@ -91,23 +92,20 @@ export function IssueCreditNoteDialog({ open, onOpenChange }: Props) {
             <FormField control={form.control} name="userId" render={({ field }) => (
               <FormItem>
                 <FormLabel>Dealer</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={dealers.isLoading ? 'Loading dealers…' : 'Pick a dealer'}
-                      />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {dealers.data?.map((d) => (
-                      <SelectItem key={d._id} value={d._id}>
-                        {d.name} — {d.mobile}
-                        {d.dealerCode ? ` (${d.dealerCode})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <Combobox
+                    options={(dealers.data ?? []).map((d) => ({
+                      value: d._id,
+                      label: d.name,
+                      hint: d.dealerCode ? `${d.mobile} (${d.dealerCode})` : d.mobile,
+                      keywords: `${d.mobile} ${d.dealerCode ?? ''}`,
+                    }))}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder={dealers.isLoading ? 'Loading dealers…' : 'Pick a dealer'}
+                    searchPlaceholder="Search dealer..."
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )} />

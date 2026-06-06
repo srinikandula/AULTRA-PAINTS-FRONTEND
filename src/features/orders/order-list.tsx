@@ -10,6 +10,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Combobox } from '@/components/ui/combobox';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -159,67 +160,66 @@ export function OrderList() {
               </SelectContent>
             </Select>
 
-            {/* TODO: replace the dealer Select with a Combobox typeahead — the live list
-                is ~3500 dealers. Same future-work as the Credit Notes Issue dialog. */}
-            <Select
+            {/* ~3500 dealers — searchable Combobox (search by name or dealer code). */}
+            <Combobox
+              triggerClassName="h-9"
+              options={[
+                { value: ALL, label: 'All dealers' },
+                ...(dealers.data ?? []).map((d) => ({
+                  value: d.dealerCode ?? d._id,
+                  label: d.name,
+                  hint: d.dealerCode,
+                  keywords: d.dealerCode ?? '',
+                })),
+              ]}
               value={dealerCode ?? ALL}
-              onValueChange={(v) => {
+              onChange={(v) => {
                 setDealerCode(v === ALL ? undefined : v);
                 setPage(1);
               }}
-            >
-              <SelectTrigger><SelectValue placeholder="Dealer" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All dealers</SelectItem>
-                {dealers.data?.map((d) => (
-                  <SelectItem
-                    key={d._id}
-                    value={d.dealerCode ?? d._id}
-                  >{`${d.name}${d.dealerCode ? ` (${d.dealerCode})` : ''}`}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Dealer"
+              searchPlaceholder="Search dealer..."
+            />
 
-            {/* TODO: the SE filter currently uses the SE's mobile number as
-                `salesExecutiveMobile`. Cross-check with the backend ORDER
-                controller's actual filter param if SE-scoping ever returns
-                wrong rows. */}
-            <Select
+            {/* NOTE: the backend `getOrders` currently ignores `salesExecutiveMobile`
+                (see the TODO on OrderListParams); the filter value is the SE's mobile. */}
+            <Combobox
+              triggerClassName="h-9"
+              options={[
+                { value: ALL, label: 'All sales executives' },
+                ...(salesExecutives.data ?? []).map((se) => ({
+                  value: se.mobile,
+                  label: se.name,
+                  hint: se.mobile,
+                })),
+              ]}
               value={salesExecutiveMobile ?? ALL}
-              onValueChange={(v) => {
+              onChange={(v) => {
                 setSalesExecutiveMobile(v === ALL ? undefined : v);
                 setPage(1);
               }}
-            >
-              <SelectTrigger><SelectValue placeholder="Sales Executive" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All sales executives</SelectItem>
-                {salesExecutives.data?.map((se) => (
-                  <SelectItem key={se.id} value={se.mobile}>
-                    {se.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Sales Executive"
+              searchPlaceholder="Search sales executive..."
+            />
 
             {canFilterByBranch ? (
-              <Select
+              <Combobox
+                triggerClassName="h-9"
+                options={[
+                  { value: ALL, label: 'All branches' },
+                  ...(branches.data ?? []).map((b) => ({
+                    value: String(b.iMasterId),
+                    label: b.sName,
+                  })),
+                ]}
                 value={branchId !== undefined ? String(branchId) : ALL}
-                onValueChange={(v) => {
+                onChange={(v) => {
                   setBranchId(v === ALL ? undefined : Number(v));
                   setPage(1);
                 }}
-              >
-                <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>All branches</SelectItem>
-                  {branches.data?.map((b) => (
-                    <SelectItem key={b.iMasterId} value={String(b.iMasterId)}>
-                      {b.sName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Branch"
+                searchPlaceholder="Search branch..."
+              />
             ) : (
               <div className="flex items-center">
                 {filtersActive && (
@@ -519,6 +519,14 @@ function OrderDetailPanel({ orderId }: { orderId: string }) {
           </div>
           <div className="flex-1 space-y-1">
             <div>Placed by: {placedByName}{placedByType}</div>
+            {o.salesExecutive?.name ? (
+              <div>
+                Route: {o.salesExecutive.name}
+                {o.salesExecutive.mobile ? (
+                  <span className="ml-1 text-xs text-muted-foreground">({o.salesExecutive.mobile})</span>
+                ) : null}
+              </div>
+            ) : null}
             {o.branchName ? <div>Branch: {o.branchName}</div> : null}
           </div>
         </div>

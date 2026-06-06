@@ -7,11 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
+import { Combobox } from '@/components/ui/combobox';
 import { useBrands } from '@/features/brands/hooks';
 import { useCreateProduct } from './hooks';
 
@@ -55,18 +53,15 @@ export function CreateProduct() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Brand</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={brandsLoading ? 'Loading…' : 'Select a brand'} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {(brands ?? []).map((b) => (
-                          <SelectItem key={b._id} value={b._id}>{b.brandName}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={(brands ?? []).map((b) => ({ value: b._id, label: b.brandName }))}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={brandsLoading ? 'Loading…' : 'Select a brand'}
+                        searchPlaceholder="Search brand..."
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

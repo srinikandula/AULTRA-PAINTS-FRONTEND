@@ -67,6 +67,10 @@ export type Order = {
   branchId?: number;
   branchName?: string;
   narration?: string;
+  // Route the order was placed against, snapshotted at order time (falls back
+  // to the dealer's current mapping). Backend's getOrderDetails returns this as
+  // `salesExecutive` ({ name: routeName, mobile: salesman mobile }). Detail-only.
+  salesExecutive?: { name: string; mobile?: string } | null;
   // Focus 8 integration fields.
   focusSyncStatus?: FocusSyncStatus;
   focusOrderId?: string | number; // Focus SO voucher number

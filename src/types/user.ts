@@ -23,7 +23,8 @@ export type User = {
   parentSalesExecutive?: string;
   primaryContactPerson?: string;
   primaryContactPersonMobile?: string;
-  salesExecutive?: string;       // stores SE mobile number
+  salesExecutive?: string;       // stores SE mobile number (the salesman S-A)
+  routeName?: string;            // Focus route (vmCore_Account.SalesmanName) the dealer maps to
   productCategories?: string[];  // array of ProductCategory ObjectIds
   address?: string;
   state?: string;

@@ -126,6 +126,26 @@ export function useSalesExecutives() {
   });
 }
 
+// Canonical route list from Focus (`Core__salesman`). Each route carries the
+// actual salesman's name + mobile so picking a route can also set the dealer's
+// `salesExecutive` consistently.
+export type Route = {
+  routeName: string;
+  salesmanName: string;
+  salesExecutiveMobile: string | null;
+};
+
+export function useRoutes() {
+  return useQuery<Route[]>({
+    queryKey: ['users', 'routes'],
+    queryFn: async () => {
+      const env = await api<{ data: Route[] }>('users/routes');
+      return env.data;
+    },
+    staleTime: 10 * 60 * 1000, // routes change rarely; match the backend cache
+  });
+}
+
 export function useExportUsers() {
   return useMutation<void, Error, { searchQuery?: string; accountType?: string }>({
     mutationFn: ({ searchQuery, accountType } = {}) =>
