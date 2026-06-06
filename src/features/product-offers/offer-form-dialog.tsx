@@ -8,14 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
+import { Combobox } from '@/components/ui/combobox';
 import { useCreateProductOffer, useUpdateProductOffer } from './hooks';
 import { useProductCategories } from '@/features/products/product-categories-hooks';
 import { compressImage } from '@/lib/compress-image';
@@ -233,21 +231,21 @@ export function OfferFormDialog({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Category</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || NONE}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={NONE}>No category</SelectItem>
-                    {categoriesQuery.data?.map((c) => (
-                      <SelectItem key={c._id} value={c._id}>
-                        {c.categoryName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <Combobox
+                    options={[
+                      { value: NONE, label: 'No category' },
+                      ...(categoriesQuery.data ?? []).map((c) => ({
+                        value: c._id,
+                        label: c.categoryName,
+                      })),
+                    ]}
+                    value={field.value || NONE}
+                    onChange={field.onChange}
+                    placeholder="Select a category"
+                    searchPlaceholder="Search category..."
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

@@ -12,9 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -488,21 +486,21 @@ export function CatalogForm({ initial }: CatalogFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                  <Select value={field.value || NONE} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={NONE}>No category</SelectItem>
-                      {categories.data?.map((c) => (
-                        <SelectItem key={c._id} value={c._id}>
-                          {c.categoryName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <Combobox
+                      options={[
+                        { value: NONE, label: 'No category' },
+                        ...(categories.data ?? []).map((c) => ({
+                          value: c._id,
+                          label: c.categoryName,
+                        })),
+                      ]}
+                      value={field.value || NONE}
+                      onChange={field.onChange}
+                      placeholder="Select a category"
+                      searchPlaceholder="Search category..."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

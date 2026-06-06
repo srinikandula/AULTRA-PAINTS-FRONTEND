@@ -17,6 +17,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Combobox } from '@/components/ui/combobox';
 import { useBrands } from '@/features/brands/hooks';
 import { useCreateBatch, useProductsForBrand } from './hooks';
 
@@ -123,14 +124,15 @@ export function CreateBatch() {
                 <FormField control={form.control} name="Brand" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Brand</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Pick a brand" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {brands.data?.map((b) => (
-                          <SelectItem key={b._id} value={b._id}>{b.brandName}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={(brands.data ?? []).map((b) => ({ value: b._id, label: b.brandName }))}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Pick a brand"
+                        searchPlaceholder="Search brand..."
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -196,24 +198,20 @@ export function CreateBatch() {
                               name={`BatchNumbers.${idx}.ProductName`}
                               render={({ field }) => (
                                 <FormItem>
-                                  <Select
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                    disabled={!selectedBrandId}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue
-                                          placeholder={selectedBrandId ? 'Pick a product' : 'Pick a brand first'}
-                                        />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {products.data?.map((p) => (
-                                        <SelectItem key={p._id} value={p._id}>{p.products}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                  <FormControl>
+                                    <Combobox
+                                      triggerClassName="h-9"
+                                      disabled={!selectedBrandId}
+                                      options={(products.data ?? []).map((p) => ({
+                                        value: p._id,
+                                        label: p.products,
+                                      }))}
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                      placeholder={selectedBrandId ? 'Pick a product' : 'Pick a brand first'}
+                                      searchPlaceholder="Search product..."
+                                    />
+                                  </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}

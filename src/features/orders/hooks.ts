@@ -46,6 +46,9 @@ type RawOrderRow = {
   branchId?: number;
   branchName?: string;
   narration?: string;
+  // Detail-only: route view returned by getOrderDetails as `salesExecutive`
+  // ({ name: routeName, mobile: salesman mobile }).
+  salesExecutive?: { name?: string; mobile?: string } | null;
   focusSyncStatus?: FocusSyncStatus;
   focusOrderId?: string | number;
   focusDCInvoiceId?: string[];
@@ -143,6 +146,9 @@ function toOrder(row: RawOrderRow): Order {
     branchId: row.branchId,
     branchName: row.branchName,
     narration: row.narration,
+    salesExecutive: row.salesExecutive
+      ? { name: row.salesExecutive.name ?? '', mobile: row.salesExecutive.mobile }
+      : undefined,
     focusSyncStatus: row.focusSyncStatus,
     focusOrderId: row.focusOrderId,
     focusDCInvoiceId: row.focusDCInvoiceId,

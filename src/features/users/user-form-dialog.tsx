@@ -2,11 +2,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -16,7 +13,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { useCreateUser, useUpdateUser, useSalesExecutives } from './hooks';
+import { Combobox, MultiCombobox } from '@/components/ui/combobox';
+import { useCreateUser, useUpdateUser, useSalesExecutives, useRoutes } from './hooks';
 import { useProductCategories } from '@/features/products/product-categories-hooks';
 import type { User, UserAccountType } from '@/types/user';
 
@@ -39,6 +37,7 @@ const userSchema = z.object({
   primaryContactPerson: z.string().optional(),
   primaryContactPersonMobile: z.string().optional(),
   salesExecutive: z.string().optional(),
+  routeName: z.string().optional(),
   productCategories: z.array(z.string()).optional(),
 }).superRefine((data, ctx) => {
   if (data.accountType !== 'Dealer') return;
@@ -49,6 +48,9 @@ const userSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Required', path: ['primaryContactPersonMobile'] });
   } else if (!/^\d{10}$/.test(data.primaryContactPersonMobile)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: '10 digits required', path: ['primaryContactPersonMobile'] });
+  }
+  if (!data.routeName?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Required', path: ['routeName'] });
   }
   if (!data.salesExecutive?.trim()) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Required', path: ['salesExecutive'] });
@@ -76,6 +78,7 @@ export function UserFormDialog({ user, onClose }: UserFormDialogProps) {
   const isEdit = !!user;
 
   const salesExecsQuery = useSalesExecutives();
+  const routesQuery = useRoutes();
   const categoriesQuery = useProductCategories();
 
   const form = useForm<UserValues>({
@@ -95,6 +98,7 @@ export function UserFormDialog({ user, onClose }: UserFormDialogProps) {
       primaryContactPerson: user?.primaryContactPerson ?? '',
       primaryContactPersonMobile: user?.primaryContactPersonMobile ?? '',
       salesExecutive: user?.salesExecutive ?? '',
+      routeName: user?.routeName ?? '',
       productCategories: user?.productCategories ?? [],
     },
   });
@@ -117,6 +121,7 @@ export function UserFormDialog({ user, onClose }: UserFormDialogProps) {
       cleaned.primaryContactPerson = values.primaryContactPerson;
       cleaned.primaryContactPersonMobile = values.primaryContactPersonMobile;
       cleaned.salesExecutive = values.salesExecutive;
+      cleaned.routeName = values.routeName;
       cleaned.productCategories = values.productCategories;
     }
     if (values.accountType === 'Painter') {
@@ -232,21 +237,43 @@ export function UserFormDialog({ user, onClose }: UserFormDialogProps) {
               <FormField control={form.control} name="salesExecutive" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs">Sales Executive <span className="text-destructive">*</span></FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Select SE" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {salesExecsQuery.data?.map((se) => (
-                        <SelectItem key={se.mobile} value={se.mobile} className="text-sm">
-                          {se.name}
-                          <span className="ml-1 text-xs text-muted-foreground">({se.mobile})</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <Combobox
+                      options={(salesExecsQuery.data ?? []).map((se) => ({
+                        value: se.mobile,
+                        label: se.name,
+                        hint: se.mobile,
+                      }))}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select SE"
+                      searchPlaceholder="Search sales executive..."
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="routeName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Route <span className="text-destructive">*</span></FormLabel>
+                  <FormControl>
+                    <Combobox
+                      // No dedup: the same route name can belong to different
+                      // salesmen, so the salesman name is shown as a hint to
+                      // disambiguate.
+                      options={(routesQuery.data ?? []).map((route) => ({
+                        value: route.routeName,
+                        label: route.routeName,
+                        hint: route.salesmanName,
+                        keywords: route.salesExecutiveMobile ?? '',
+                      }))}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select route"
+                      searchPlaceholder="Search route..."
+                    />
+                  </FormControl>
                   <FormMessage className="text-xs" />
                 </FormItem>
               )} />
@@ -283,70 +310,27 @@ export function UserFormDialog({ user, onClose }: UserFormDialogProps) {
                 </FormItem>
               )} />
 
-              <FormField control={form.control} name="productCategories" render={({ field }) => {
-                const selected: string[] = field.value ?? [];
-                const categories = categoriesQuery.data ?? [];
-                const label = selected.length === 0
-                  ? 'Select categories'
-                  : selected.length === 1
-                    ? (categories.find(c => c._id === selected[0])?.categoryName ?? '1 selected')
-                    : `${selected.length} categories selected`;
-
-                return (
-                  <FormItem className="col-span-2">
-                    <FormLabel className="text-xs">
-                      Product Categories <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-8 w-full justify-between text-sm font-normal"
-                          >
-                            <span className={selected.length === 0 ? 'text-muted-foreground' : ''}>
-                              {label}
-                            </span>
-                            <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-[--radix-popover-trigger-width] p-1"
-                        align="start"
-                      >
-                        <div className="max-h-60 overflow-y-auto">
-                        {categories.length === 0 ? (
-                          <p className="px-2 py-1.5 text-xs text-muted-foreground">No categories</p>
-                        ) : (
-                          categories.map((cat) => {
-                            const checked = selected.includes(cat._id);
-                            return (
-                              <div
-                                key={cat._id}
-                                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                                onClick={() => {
-                                  field.onChange(
-                                    checked
-                                      ? selected.filter(id => id !== cat._id)
-                                      : [...selected, cat._id],
-                                  );
-                                }}
-                              >
-                                <Checkbox checked={checked} className="pointer-events-none" />
-                                <span>{cat.categoryName}</span>
-                              </div>
-                            );
-                          })
-                        )}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                );
-              }} />
+              <FormField control={form.control} name="productCategories" render={({ field }) => (
+                <FormItem className="col-span-2">
+                  <FormLabel className="text-xs">
+                    Product Categories <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <MultiCombobox
+                      options={(categoriesQuery.data ?? []).map((cat) => ({
+                        value: cat._id,
+                        label: cat.categoryName,
+                      }))}
+                      values={field.value ?? []}
+                      onChange={field.onChange}
+                      placeholder="Select categories"
+                      searchPlaceholder="Search categories..."
+                      emptyText="No categories"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )} />
             </div>
           )}
 
