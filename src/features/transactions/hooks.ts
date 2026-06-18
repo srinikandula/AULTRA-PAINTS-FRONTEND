@@ -84,6 +84,8 @@ type LedgerParams = {
   limit: number;
   creditNoteStatus?: 'pending' | 'issued';
   couponCode?: string;
+  dealerCode?: string;
+  dealerName?: string;
   date?: string;
 };
 
