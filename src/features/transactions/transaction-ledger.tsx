@@ -44,6 +44,8 @@ export function TransactionLedger() {
   const [page, setPage] = useState(1);
   const [creditNoteStatus, setCreditNoteStatus] = useState<CreditNoteStatus | undefined>(undefined);
   const [couponCode, setCouponCode] = useState('');
+  const [dealerCode, setDealerCode] = useState('');
+  const [dealerName, setDealerName] = useState('');
   const [date, setDate] = useState('');
   const limit = 20;
 
@@ -52,6 +54,8 @@ export function TransactionLedger() {
     limit,
     creditNoteStatus,
     couponCode: couponCode || undefined,
+    dealerCode: dealerCode || undefined,
+    dealerName: dealerName || undefined,
     date: date || undefined,
   });
 
@@ -63,7 +67,7 @@ export function TransactionLedger() {
 
       <Card>
         <CardHeader>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Select
               value={creditNoteStatus ?? ALL}
               onValueChange={(v) => {
@@ -83,6 +87,18 @@ export function TransactionLedger() {
               placeholder="Coupon code"
               value={couponCode}
               onChange={(e) => { setCouponCode(e.target.value); setPage(1); }}
+            />
+
+            <Input
+              placeholder="Dealer code"
+              value={dealerCode}
+              onChange={(e) => { setDealerCode(e.target.value); setPage(1); }}
+            />
+
+            <Input
+              placeholder="Dealer name"
+              value={dealerName}
+              onChange={(e) => { setDealerName(e.target.value); setPage(1); }}
             />
 
             <Input
